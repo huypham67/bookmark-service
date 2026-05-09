@@ -9,11 +9,13 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// Router wraps the Gin engine and application server configuration.
 type Router struct {
 	engine *gin.Engine
 	port   string
 }
 
+// NewRouter creates and configures a new HTTP router.
 func NewRouter(
 	port string,
 	healthCheckHandler handler.HealthCheck,
@@ -39,6 +41,7 @@ func NewRouter(
 	}
 }
 
+// ServeHTTP implements the http.Handler interface.
 func (r *Router) ServeHTTP(
 	writer http.ResponseWriter,
 	request *http.Request,
@@ -46,6 +49,7 @@ func (r *Router) ServeHTTP(
 	r.engine.ServeHTTP(writer, request)
 }
 
+// Run starts the HTTP server.
 func (r *Router) Run() error {
 	return r.engine.Run(":" + r.port)
 }

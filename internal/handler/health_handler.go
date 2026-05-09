@@ -7,7 +7,7 @@ import (
 	"github.com/huypham67/bookmark-management/internal/service"
 )
 
-// HealthCheck defines the interface for the health check handler.
+// HealthCheck defines the contract for health check HTTP handlers.
 type HealthCheck interface {
 	GetHealthCheck(c *gin.Context)
 }
@@ -16,14 +16,14 @@ type healthCheckHandler struct {
 	healthCheckService service.HealthCheck
 }
 
-// NewHealthCheckHandler creates a new instance of the health check handler with the provided health check service.
+// NewHealthCheckHandler creates a new health check handler.
 func NewHealthCheckHandler(healthCheckService service.HealthCheck) HealthCheck {
 	return &healthCheckHandler{
 		healthCheckService: healthCheckService,
 	}
 }
 
-// GetHealthCheck godoc
+// GetHealthCheck handles the health check endpoint.
 //
 // @Summary Health Check
 // @Description Check application health status

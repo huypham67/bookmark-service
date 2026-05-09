@@ -7,13 +7,14 @@ import (
 	"github.com/kelseyhightower/envconfig"
 )
 
+// Config holds the application configuration loaded from environment variables.
 type Config struct {
 	AppPort     string `envconfig:"APP_PORT" default:"8080"`
 	ServiceName string `envconfig:"SERVICE_NAME" required:"true"`
 	InstanceID  string `envconfig:"INSTANCE_ID"`
 }
 
-// LoadConfig loads the configuration from environment variables and returns a Config struct.
+// LoadConfig loads application configuration from environment variables.
 func LoadConfig() (*Config, error) {
 	config := &Config{}
 

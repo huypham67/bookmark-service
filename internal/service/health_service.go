@@ -6,7 +6,7 @@ import (
 
 const statusMessage = "OK"
 
-// HealthCheck defines the interface for the health check service.
+// HealthCheck defines the contract for health check services.
 type HealthCheck interface {
 	GetStatus() model.HealthCheckResponse
 }
@@ -16,7 +16,7 @@ type healthCheckService struct {
 	instanceID  string
 }
 
-// NewHealthCheckService creates a new instance of the health check service with the provided service name and instance ID.
+// NewHealthCheckService creates a new health check service.
 func NewHealthCheckService(serviceName string, instanceID string) HealthCheck {
 	return &healthCheckService{
 		serviceName: serviceName,
@@ -24,7 +24,7 @@ func NewHealthCheckService(serviceName string, instanceID string) HealthCheck {
 	}
 }
 
-// GetStatus returns the health check status, including a message, service name, and instance ID.
+// GetStatus returns the current application health status.
 func (s *healthCheckService) GetStatus() model.HealthCheckResponse {
 	return model.HealthCheckResponse{
 		Message:     statusMessage,
