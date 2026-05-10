@@ -4,143 +4,87 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
-	"github.com/huypham67/bookmark-management/internal/api"
 	"github.com/huypham67/bookmark-management/internal/config"
-	"github.com/huypham67/bookmark-management/internal/handler"
-	"github.com/huypham67/bookmark-management/internal/model"
-	"github.com/huypham67/bookmark-management/internal/service"
-
+	"github.com/huypham67/bookmark-management/internal/dto/response"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestHealthCheckEndpoint(t *testing.T) {
+	t.Parallel()
+
+	type expected struct {
+		statusCode int
+		response   response.HealthCheckResponse
+	}
 
 	testCases := []struct {
-		name                   string
-		config                 config.Config
-		expectedHTTPStatusCode int
-		expectedMessage        string
-		expectedServiceName    string
-		expectedInstanceID     string
-		expectGeneratedUUID    bool
+		name       string
+		appConfig  config.Config
+		setupRedis func(*TestApp)
+		expected   expected
 	}{
 		{
-			name: "should return configured instance id",
-
-			config: config.Config{
-				AppPort:     "8080",
+			name: "should return 200 OK with successful health check",
+			appConfig: config.Config{
 				ServiceName: "bookmark-service",
 				InstanceID:  "instance-1",
 			},
-
-			expectedHTTPStatusCode: http.StatusOK,
-			expectedMessage:        "OK",
-			expectedServiceName:    "bookmark-service",
-			expectedInstanceID:     "instance-1",
-			expectGeneratedUUID:    false,
+			setupRedis: func(app *TestApp) {
+			},
+			expected: expected{
+				statusCode: http.StatusOK,
+				response: response.HealthCheckResponse{
+					Message:     "OK",
+					ServiceName: "bookmark-service",
+					InstanceID:  "instance-1",
+				},
+			},
 		},
 		{
-			name: "should return generated uuid instance id",
-
-			config: config.Config{
-				AppPort:     "8080",
+			name: "should return 500 when redis connection fails",
+			appConfig: config.Config{
 				ServiceName: "bookmark-service",
+				InstanceID:  "instance-2",
 			},
-
-			expectedHTTPStatusCode: http.StatusOK,
-			expectedMessage:        "OK",
-			expectedServiceName:    "bookmark-service",
-			expectGeneratedUUID:    true,
+			setupRedis: func(app *TestApp) {
+				app.MockRedis.Close()
+			},
+			expected: expected{
+				statusCode: http.StatusInternalServerError,
+				response: response.HealthCheckResponse{
+					Message:     "FAILED",
+					ServiceName: "bookmark-service",
+					InstanceID:  "instance-2",
+				},
+			},
 		},
 	}
 
-	for _, testCase := range testCases {
-		testCase := testCase
+	for _, tc := range testCases {
+		tc := tc
 
-		t.Run(testCase.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-			t.Setenv("APP_PORT", testCase.config.AppPort)
-			t.Setenv("SERVICE_NAME", testCase.config.ServiceName)
-			if testCase.config.InstanceID != "" {
-				t.Setenv(
-					"INSTANCE_ID",
-					testCase.config.InstanceID,
-				)
-			} else {
-				_ = os.Unsetenv("INSTANCE_ID")
-			}
+			app := setupHealthCheckTestApp(t, tc.appConfig.ServiceName, tc.appConfig.InstanceID)
 
-			cfg, err := config.LoadConfig()
+			tc.setupRedis(app)
 
-			require.NoError(t, err)
-
-			healthCheckService := service.NewHealthCheckService(
-				cfg.ServiceName,
-				cfg.InstanceID,
-			)
-
-			healthCheckHandler := handler.NewHealthCheckHandler(
-				healthCheckService,
-			)
-
-			router := api.NewRouter(
-				cfg.AppPort,
-				healthCheckHandler,
-			)
-
-			req := httptest.NewRequest(
-				http.MethodGet,
-				"/health-check",
-				nil,
-			)
-
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/health-check", nil)
 			recorder := httptest.NewRecorder()
+			app.Router.ServeHTTP(recorder, req)
 
-			router.ServeHTTP(recorder, req)
+			assert.Equal(t, tc.expected.statusCode, recorder.Code)
+			assert.Equal(t, "application/json; charset=utf-8", recorder.Header().Get("Content-Type"))
 
-			require.Equal(
-				t,
-				testCase.expectedHTTPStatusCode,
-				recorder.Code,
-			)
-
-			var response model.HealthCheckResponse
-
-			err = json.Unmarshal(
-				recorder.Body.Bytes(),
-				&response,
-			)
-
+			var actual response.HealthCheckResponse
+			err := json.Unmarshal(recorder.Body.Bytes(), &actual)
 			require.NoError(t, err)
 
-			assert.Equal(
-				t,
-				testCase.expectedMessage,
-				response.Message,
-			)
-
-			assert.Equal(
-				t,
-				testCase.expectedServiceName,
-				response.ServiceName,
-			)
-
-			if testCase.expectGeneratedUUID {
-				assert.NotEmpty(
-					t,
-					response.InstanceID,
-				)
-			} else {
-				assert.Equal(
-					t,
-					testCase.expectedInstanceID,
-					response.InstanceID,
-				)
-			}
+			assert.Equal(t, tc.expected.response, actual)
 		})
 	}
 }

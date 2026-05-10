@@ -1,6 +1,19 @@
 basePath: /api/v1
 definitions:
-  github_com_huypham67_bookmark-management_internal_model.HealthCheckResponse:
+  gin.H:
+    additionalProperties: {}
+    type: object
+  github_com_huypham67_bookmark-management_internal_dto_request.ShortenURLRequest:
+    properties:
+      exp:
+        minimum: 0
+        type: integer
+      url:
+        type: string
+    required:
+    - url
+    type: object
+  github_com_huypham67_bookmark-management_internal_dto_response.HealthCheckResponse:
     properties:
       instance_id:
         type: string
@@ -9,7 +22,13 @@ definitions:
       service_name:
         type: string
     type: object
-host: localhost:8080
+  github_com_huypham67_bookmark-management_internal_dto_response.ShortenURLResponse:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    type: object
 info:
   contact: {}
   description: This is the API documentation for the Bookmark Management service.
@@ -20,17 +39,78 @@ paths:
     get:
       consumes:
       - application/json
-      description: Check application health status
+      description: Check application health status and Redis connection
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_huypham67_bookmark-management_internal_model.HealthCheckResponse'
+            $ref: '#/definitions/github_com_huypham67_bookmark-management_internal_dto_response.HealthCheckResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_huypham67_bookmark-management_internal_dto_response.HealthCheckResponse'
       summary: Health Check
       tags:
       - health
+  /links/redirect/{code}:
+    get:
+      consumes:
+      - application/json
+      description: Redirect user to the original URL based on the shortened code
+      parameters:
+      - description: Shortened code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "301":
+          description: Redirect successful
+        "404":
+          description: Short link not found
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Redirect to Original URL
+      tags:
+      - links
+  /links/shorten:
+    post:
+      consumes:
+      - application/json
+      description: Create a shortened URL code and save it to Redis
+      parameters:
+      - description: URL to shorten
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_huypham67_bookmark-management_internal_dto_request.ShortenURLRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Shorten URL generated successfully
+          schema:
+            $ref: '#/definitions/github_com_huypham67_bookmark-management_internal_dto_response.ShortenURLResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Shorten URL
+      tags:
+      - links
 securityDefinitions:
   BearerAuth:
     in: header
