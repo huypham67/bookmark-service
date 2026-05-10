@@ -4,7 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/huypham67/bookmark-management/internal/handler"
+	"github.com/huypham67/bookmark-management/internal/handler/health"
+	"github.com/huypham67/bookmark-management/internal/handler/link"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -15,10 +16,11 @@ type Router struct {
 	port   string
 }
 
-// NewRouter creates and configures a new HTTP router.
+// NewRouter creates and configures a new HTTP router with all API endpoints.
 func NewRouter(
 	port string,
-	healthCheckHandler handler.HealthCheck,
+	healthCheckHandler health.HealthCheck,
+	linkHandler link.Link,
 ) *Router {
 	engine := gin.Default()
 
@@ -33,6 +35,8 @@ func NewRouter(
 			"/health-check",
 			healthCheckHandler.GetHealthCheck,
 		)
+
+		apiV1.POST("/links/shorten-url", linkHandler.ShortenURL)
 	}
 
 	return &Router{
@@ -49,7 +53,7 @@ func (r *Router) ServeHTTP(
 	r.engine.ServeHTTP(writer, request)
 }
 
-// Run starts the HTTP server.
+// Run starts the HTTP server on the configured port.
 func (r *Router) Run() error {
 	return r.engine.Run(":" + r.port)
 }

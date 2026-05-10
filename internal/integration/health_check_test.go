@@ -2,16 +2,20 @@ package integration
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/huypham67/bookmark-management/infrastructure/redis"
 	"github.com/huypham67/bookmark-management/internal/api"
 	"github.com/huypham67/bookmark-management/internal/config"
-	"github.com/huypham67/bookmark-management/internal/handler"
-	"github.com/huypham67/bookmark-management/internal/model"
-	"github.com/huypham67/bookmark-management/internal/service"
+	"github.com/huypham67/bookmark-management/internal/dto/response"
+	healthHandler "github.com/huypham67/bookmark-management/internal/handler/health"
+	healthService "github.com/huypham67/bookmark-management/internal/service/health"
+	"github.com/huypham67/bookmark-management/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +25,7 @@ func TestHealthCheckEndpoint(t *testing.T) {
 
 	testCases := []struct {
 		name                   string
-		config                 config.Config
+		appConfig              config.AppConfig
 		expectedHTTPStatusCode int
 		expectedMessage        string
 		expectedServiceName    string
@@ -31,7 +35,7 @@ func TestHealthCheckEndpoint(t *testing.T) {
 		{
 			name: "should return configured instance id",
 
-			config: config.Config{
+			appConfig: config.AppConfig{
 				AppPort:     "8080",
 				ServiceName: "bookmark-service",
 				InstanceID:  "instance-1",
@@ -46,7 +50,7 @@ func TestHealthCheckEndpoint(t *testing.T) {
 		{
 			name: "should return generated uuid instance id",
 
-			config: config.Config{
+			appConfig: config.AppConfig{
 				AppPort:     "8080",
 				ServiceName: "bookmark-service",
 			},
@@ -63,12 +67,12 @@ func TestHealthCheckEndpoint(t *testing.T) {
 
 		t.Run(testCase.name, func(t *testing.T) {
 
-			t.Setenv("APP_PORT", testCase.config.AppPort)
-			t.Setenv("SERVICE_NAME", testCase.config.ServiceName)
-			if testCase.config.InstanceID != "" {
+			t.Setenv("APP_PORT", testCase.appConfig.AppPort)
+			t.Setenv("SERVICE_NAME", testCase.appConfig.ServiceName)
+			if testCase.appConfig.InstanceID != "" {
 				t.Setenv(
 					"INSTANCE_ID",
-					testCase.config.InstanceID,
+					testCase.appConfig.InstanceID,
 				)
 			} else {
 				_ = os.Unsetenv("INSTANCE_ID")
@@ -78,23 +82,41 @@ func TestHealthCheckEndpoint(t *testing.T) {
 
 			require.NoError(t, err)
 
-			healthCheckService := service.NewHealthCheckService(
+			// Set up miniredis for testing
+			mr := miniredis.NewMiniRedis()
+			require.NoError(t, mr.Start())
+			defer mr.Close()
+
+			redisClient, err := redis.NewRedisClient(redis.RedisConfig{
+				Host:     "localhost",
+				Port:     fmt.Sprintf("%d", mr.Server().Addr().Port),
+				Password: "",
+				Database: 0,
+			})
+			require.NoError(t, err)
+
+			healthCheckService := healthService.NewHealthCheckService(
 				cfg.ServiceName,
 				cfg.InstanceID,
+				redisClient,
 			)
 
-			healthCheckHandler := handler.NewHealthCheckHandler(
+			healthCheckHandler := healthHandler.NewHealthCheckHandler(
 				healthCheckService,
 			)
+
+			// Create a mock linkHandler
+			mockLinkHandler := mocks.NewLinkHandler(t)
 
 			router := api.NewRouter(
 				cfg.AppPort,
 				healthCheckHandler,
+				mockLinkHandler,
 			)
 
 			req := httptest.NewRequest(
 				http.MethodGet,
-				"/health-check",
+				"/api/v1/health-check",
 				nil,
 			)
 
@@ -108,11 +130,11 @@ func TestHealthCheckEndpoint(t *testing.T) {
 				recorder.Code,
 			)
 
-			var response model.HealthCheckResponse
+			var res response.HealthCheckResponse
 
 			err = json.Unmarshal(
 				recorder.Body.Bytes(),
-				&response,
+				&res,
 			)
 
 			require.NoError(t, err)
@@ -120,25 +142,25 @@ func TestHealthCheckEndpoint(t *testing.T) {
 			assert.Equal(
 				t,
 				testCase.expectedMessage,
-				response.Message,
+				res.Message,
 			)
 
 			assert.Equal(
 				t,
 				testCase.expectedServiceName,
-				response.ServiceName,
+				res.ServiceName,
 			)
 
 			if testCase.expectGeneratedUUID {
 				assert.NotEmpty(
 					t,
-					response.InstanceID,
+					res.InstanceID,
 				)
 			} else {
 				assert.Equal(
 					t,
 					testCase.expectedInstanceID,
-					response.InstanceID,
+					res.InstanceID,
 				)
 			}
 		})

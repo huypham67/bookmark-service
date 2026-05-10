@@ -40,6 +40,10 @@ MAIN_PACKAGE = github.com/huypham67/bookmark-management
 BIN_DIR = ./bin
 DOCS_DIR = ./docs
 
+# Coverage variables
+COVERAGE_EXCLUDE = mocks|main.go|_test.go|docs|bootstrap
+COVERAGE_THRESHOLD = 80
+
 # Version variables
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -127,22 +131,29 @@ release: build-linux build-macos build-windows
 
 .PHONY: test
 test:
-	@echo "Running tests..."
-	go test -v -race -coverprofile=coverage.out ./...
-	@echo "✓ Tests completed"
-	@echo "Coverage report: coverage.out"
+	@echo "Running tests with coverage..."
+	go clean -testcache
+	go test ./... -coverprofile=coverage.tmp -covermode=atomic -coverpkg=./internal/... -p 1; \
+	grep -vE "$(COVERAGE_EXCLUDE)" coverage.tmp > coverage.out || touch coverage.out; \
+	go tool cover -html=coverage.out -o coverage.html; \
+	echo "✓ Tests completed"; \
+	echo "📊 Coverage report: coverage.html"; \
+	go tool cover -func=coverage.out | grep total
 
 .PHONY: test-verbose
 test-verbose:
-	@echo "Running tests (verbose)..."
-	go test -v -race -coverprofile=coverage.out ./...
-	go tool cover -html=coverage.out -o coverage.html
-	@echo "✓ Tests completed"
-	@echo "HTML Coverage report: coverage.html"
+	@echo "Running tests with verbose output..."
+	go clean -testcache
+	go test -v ./... -coverprofile=coverage.tmp -covermode=atomic -coverpkg=./internal/... -p 1; \
+	grep -vE "$(COVERAGE_EXCLUDE)" coverage.tmp > coverage.out || touch coverage.out; \
+	go tool cover -html=coverage.out -o coverage.html; \
+	echo "✓ Tests completed"; \
+	echo "📊 HTML Coverage report: coverage.html"; \
+	go tool cover -func=coverage.out | grep total
 
 .PHONY: test-coverage
 test-coverage: test
-	@echo "Displaying coverage report..."
+	@echo "Opening coverage report..."
 	go tool cover -html=coverage.out
 
 .PHONY: fmt

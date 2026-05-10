@@ -11,7 +11,7 @@
     "paths": {
         "/health-check": {
             "get": {
-                "description": "Check application health status",
+                "description": "Check application health status and Redis connection",
                 "consumes": [
                     "application/json"
                 ],
@@ -26,7 +26,59 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_huypham67_bookmark-management_internal_model.HealthCheckResponse"
+                            "$ref": "#/definitions/github_com_huypham67_bookmark-management_internal_dto_response.HealthCheckResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_huypham67_bookmark-management_internal_dto_response.HealthCheckResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/links/shorten-url": {
+            "post": {
+                "description": "Create a shortened URL code and save it to Redis",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "links"
+                ],
+                "summary": "Shorten URL",
+                "parameters": [
+                    {
+                        "description": "URL to shorten",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_huypham67_bookmark-management_internal_dto_request.ShortenURLRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_huypham67_bookmark-management_internal_dto_response.ShortenURLResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
                         }
                     }
                 }
@@ -34,7 +86,22 @@
         }
     },
     "definitions": {
-        "github_com_huypham67_bookmark-management_internal_model.HealthCheckResponse": {
+        "gin.H": {
+            "type": "object",
+            "additionalProperties": {}
+        },
+        "github_com_huypham67_bookmark-management_internal_dto_request.ShortenURLRequest": {
+            "type": "object",
+            "properties": {
+                "exp": {
+                    "type": "integer"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_huypham67_bookmark-management_internal_dto_response.HealthCheckResponse": {
             "type": "object",
             "properties": {
                 "instance_id": {
@@ -44,6 +111,17 @@
                     "type": "string"
                 },
                 "service_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_huypham67_bookmark-management_internal_dto_response.ShortenURLResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
                     "type": "string"
                 }
             }

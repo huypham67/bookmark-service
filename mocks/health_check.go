@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	model "github.com/huypham67/bookmark-management/internal/model"
+	response "github.com/huypham67/bookmark-management/internal/dto/response"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -20,21 +20,32 @@ func (_m *HealthCheck) EXPECT() *HealthCheck_Expecter {
 	return &HealthCheck_Expecter{mock: &_m.Mock}
 }
 
-func (_m *HealthCheck) GetStatus() model.HealthCheckResponse {
+// GetStatus provides a mock function with no fields
+func (_m *HealthCheck) GetStatus() (response.HealthCheckResponse, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetStatus")
 	}
 
-	var r0 model.HealthCheckResponse
-	if rf, ok := ret.Get(0).(func() model.HealthCheckResponse); ok {
+	var r0 response.HealthCheckResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (response.HealthCheckResponse, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() response.HealthCheckResponse); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(model.HealthCheckResponse)
+		r0 = ret.Get(0).(response.HealthCheckResponse)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // HealthCheck_GetStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStatus'
@@ -54,12 +65,12 @@ func (_c *HealthCheck_GetStatus_Call) Run(run func()) *HealthCheck_GetStatus_Cal
 	return _c
 }
 
-func (_c *HealthCheck_GetStatus_Call) Return(_a0 model.HealthCheckResponse) *HealthCheck_GetStatus_Call {
-	_c.Call.Return(_a0)
+func (_c *HealthCheck_GetStatus_Call) Return(_a0 response.HealthCheckResponse, _a1 error) *HealthCheck_GetStatus_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *HealthCheck_GetStatus_Call) RunAndReturn(run func() model.HealthCheckResponse) *HealthCheck_GetStatus_Call {
+func (_c *HealthCheck_GetStatus_Call) RunAndReturn(run func() (response.HealthCheckResponse, error)) *HealthCheck_GetStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }
