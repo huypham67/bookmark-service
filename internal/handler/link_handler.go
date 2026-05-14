@@ -8,7 +8,7 @@ import (
 	"github.com/huypham67/bookmark-management/internal/dto/request"
 	"github.com/huypham67/bookmark-management/internal/dto/response"
 	"github.com/huypham67/bookmark-management/internal/service"
-	"github.com/huypham67/bookmark-management/pkg/logger"
+	"github.com/rs/zerolog/log"
 )
 
 // Link defines the contract for link HTTP handlers.
@@ -60,10 +60,10 @@ func (h *linkHandler) ShortenURL(c *gin.Context) {
 		return
 	}
 
-	code, err := h.linkService.ShortenURL(req)
+	code, err := h.linkService.ShortenURL(c.Request.Context(), req)
 
 	if err != nil {
-		logger.Get().Error().
+		log.Error().
 			Err(err).
 			Str("url", req.Url).
 			Int64("exp", req.Exp).
@@ -97,7 +97,7 @@ func (h *linkHandler) ShortenURL(c *gin.Context) {
 func (h *linkHandler) RedirectToURL(c *gin.Context) {
 	code := c.Param("code")
 
-	url, err := h.linkService.GetOriginalURL(code)
+	url, err := h.linkService.GetOriginalURL(c.Request.Context(), code)
 
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{

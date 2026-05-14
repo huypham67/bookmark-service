@@ -9,6 +9,7 @@ import (
 	"github.com/huypham67/bookmark-management/internal/utils"
 	"github.com/huypham67/bookmark-management/pkg/logger"
 	"github.com/huypham67/bookmark-management/pkg/redis"
+	"github.com/rs/zerolog/log"
 )
 
 // App represents the application container holding the router.
@@ -18,12 +19,9 @@ type App struct {
 
 // NewApp initializes and returns a new application instance with all dependencies configured.
 func NewApp() (*App, error) {
-	err := logger.Init("")
-	if err != nil {
+	if err := logger.Init(""); err != nil {
 		return nil, err
 	}
-
-	log := logger.Get()
 
 	cfg, err := config.LoadConfig()
 	if err != nil {

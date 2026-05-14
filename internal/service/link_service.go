@@ -1,16 +1,18 @@
 package service
 
 import (
+	"context"
+
 	"github.com/huypham67/bookmark-management/internal/dto/request"
 	"github.com/huypham67/bookmark-management/internal/repository"
 	"github.com/huypham67/bookmark-management/internal/utils"
-	"github.com/huypham67/bookmark-management/pkg/logger"
+	"github.com/rs/zerolog/log"
 )
 
 // LinkService defines the contract for link services.
 type LinkService interface {
-	ShortenURL(request request.ShortenURLRequest) (string, error)
-	GetOriginalURL(code string) (string, error)
+	ShortenURL(ctx context.Context, request request.ShortenURLRequest) (string, error)
+	GetOriginalURL(ctx context.Context, code string) (string, error)
 }
 
 type linkService struct {
@@ -29,20 +31,20 @@ func NewLinkService(linkRepo repository.Link, codeGenerator utils.CodeGenerator)
 const shortCodeLength = 7
 
 // ShortenURL generates a unique short code for the provided URL and saves the mapping to Redis with an expiration time.
-func (link *linkService) ShortenURL(request request.ShortenURLRequest) (string, error) {
+func (link *linkService) ShortenURL(ctx context.Context, request request.ShortenURLRequest) (string, error) {
 	code, err := link.codeGenerator.Generate(shortCodeLength)
 
 	if err != nil {
-		logger.Get().Error().
+		log.Error().
 			Err(err).
 			Msg("failed to generate short code")
 		return "", err
 	}
 
-	exists, err := link.linkRepo.CheckExists(code)
+	exists, err := link.linkRepo.CheckExists(ctx, code)
 
 	if err != nil {
-		logger.Get().Error().
+		log.Error().
 			Err(err).
 			Str("code", code).
 			Msg("failed to check if short code exists")
@@ -50,12 +52,12 @@ func (link *linkService) ShortenURL(request request.ShortenURLRequest) (string, 
 	}
 
 	if exists {
-		return link.ShortenURL(request)
+		return link.ShortenURL(ctx, request)
 	}
-	err = link.linkRepo.SaveLink(code, request.Url, request.Exp)
+	err = link.linkRepo.SaveLink(ctx, code, request.Url, request.Exp)
 
 	if err != nil {
-		logger.Get().Error().
+		log.Error().
 			Err(err).
 			Str("code", code).
 			Str("url", request.Url).
@@ -66,11 +68,11 @@ func (link *linkService) ShortenURL(request request.ShortenURLRequest) (string, 
 }
 
 // GetOriginalURL retrieves the original URL for a given shortened code.
-func (link *linkService) GetOriginalURL(code string) (string, error) {
-	url, err := link.linkRepo.GetLink(code)
+func (link *linkService) GetOriginalURL(ctx context.Context, code string) (string, error) {
+	url, err := link.linkRepo.GetLink(ctx, code)
 
 	if err != nil {
-		logger.Get().Error().
+		log.Error().
 			Err(err).
 			Str("code", code).
 			Msg("failed to retrieve original URL from Redis")

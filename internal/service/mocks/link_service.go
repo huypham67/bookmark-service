@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	"context"
+
 	request "github.com/huypham67/bookmark-management/internal/dto/request"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -12,9 +14,9 @@ type LinkService struct {
 	mock.Mock
 }
 
-// GetOriginalURL provides a mock function with given fields: code
-func (_m *LinkService) GetOriginalURL(code string) (string, error) {
-	ret := _m.Called(code)
+// GetOriginalURL provides a mock function with given fields: ctx, code
+func (_m *LinkService) GetOriginalURL(ctx context.Context, code string) (string, error) {
+	ret := _m.Called(ctx, code)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetOriginalURL")
@@ -22,17 +24,17 @@ func (_m *LinkService) GetOriginalURL(code string) (string, error) {
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (string, error)); ok {
-		return rf(code)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
+		return rf(ctx, code)
 	}
-	if rf, ok := ret.Get(0).(func(string) string); ok {
-		r0 = rf(code)
+	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+		r0 = rf(ctx, code)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(code)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, code)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -40,9 +42,9 @@ func (_m *LinkService) GetOriginalURL(code string) (string, error) {
 	return r0, r1
 }
 
-// ShortenURL provides a mock function with given fields: _a0
-func (_m *LinkService) ShortenURL(_a0 request.ShortenURLRequest) (string, error) {
-	ret := _m.Called(_a0)
+// ShortenURL provides a mock function with given fields: ctx, _a1
+func (_m *LinkService) ShortenURL(ctx context.Context, _a1 request.ShortenURLRequest) (string, error) {
+	ret := _m.Called(ctx, _a1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ShortenURL")
@@ -50,17 +52,17 @@ func (_m *LinkService) ShortenURL(_a0 request.ShortenURLRequest) (string, error)
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(request.ShortenURLRequest) (string, error)); ok {
-		return rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, request.ShortenURLRequest) (string, error)); ok {
+		return rf(ctx, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(request.ShortenURLRequest) string); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, request.ShortenURLRequest) string); ok {
+		r0 = rf(ctx, _a1)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(request.ShortenURLRequest) error); ok {
-		r1 = rf(_a0)
+	if rf, ok := ret.Get(1).(func(context.Context, request.ShortenURLRequest) error); ok {
+		r1 = rf(ctx, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}

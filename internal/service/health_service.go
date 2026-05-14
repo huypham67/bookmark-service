@@ -2,8 +2,8 @@ package service
 
 import (
 	"github.com/huypham67/bookmark-management/internal/dto/response"
-	"github.com/huypham67/bookmark-management/pkg/logger"
 	"github.com/huypham67/bookmark-management/pkg/redis"
+	"github.com/rs/zerolog/log"
 )
 
 const statusMessage = "OK"
@@ -32,7 +32,7 @@ func NewHealthCheckService(serviceName string, instanceID string, pinger redis.P
 // GetStatus returns the current application health status with service name, instance ID, and Redis connection status.
 func (s *healthCheckService) GetStatus() response.HealthCheckResponse {
 	if err := s.pinger.Ping(); err != nil {
-		logger.Get().Error().
+		log.Error().
 			Err(err).
 			Str("service", s.serviceName).
 			Msg("Redis connection failed - health check")

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/huypham67/bookmark-management/internal/dto/response"
 	"github.com/huypham67/bookmark-management/internal/service"
-	"github.com/huypham67/bookmark-management/pkg/logger"
+	"github.com/rs/zerolog/log"
 )
 
 // HealthCheck defines the contract for health check HTTP handlers.
@@ -39,7 +39,7 @@ func (h *healthCheckHandler) GetHealthCheck(c *gin.Context) {
 	var res response.HealthCheckResponse
 	res = h.healthCheckService.GetStatus()
 	if res.Message == "FAILED" {
-		logger.Get().Error().
+		log.Error().
 			Str("message", res.Message).
 			Msg("500 - health check failed")
 

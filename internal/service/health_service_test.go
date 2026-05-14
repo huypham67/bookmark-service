@@ -12,43 +12,47 @@ import (
 func TestHealthCheckService_GetStatus(t *testing.T) {
 	t.Parallel()
 
+	type fields struct {
+		serviceName string
+		instanceID  string
+	}
+
 	testCases := []struct {
 		name           string
-		serviceName    string
-		instanceID     string
+		fields         fields
 		setupMock      func(*redis.MockPinger)
 		verifyResponse func(*testing.T, response.HealthCheckResponse)
 	}{
 		{
-			name:        "should return OK when ping succeeds",
-			serviceName: "bookmark-service",
-			instanceID:  "instance-1",
+			name: "should return OK when redis ping succeeds",
+			fields: fields{
+				serviceName: "bookmark-service",
+				instanceID:  "instance-1",
+			},
 			setupMock: func(mp *redis.MockPinger) {
 				mp.On("Ping").Return(nil).Once()
 			},
 			verifyResponse: func(t *testing.T, res response.HealthCheckResponse) {
-				assert.Equal(t, response.HealthCheckResponse{
-					Message:     statusMessage,
-					ServiceName: "bookmark-service",
-					InstanceID:  "instance-1",
-				}, res)
+				assert.Equal(t, statusMessage, res.Message)
+				assert.Equal(t, "bookmark-service", res.ServiceName)
+				assert.Equal(t, "instance-1", res.InstanceID)
 			},
 		},
 		{
-			name:        "should return FAILED when ping fails",
-			serviceName: "bookmark-service",
-			instanceID:  "instance-1",
+			name: "should return FAILED when ping fails",
+			fields: fields{
+				serviceName: "bookmark-service",
+				instanceID:  "instance-1",
+			},
 			setupMock: func(mp *redis.MockPinger) {
 				mp.On("Ping").
 					Return(errors.New("redis connection failed")).
 					Once()
 			},
 			verifyResponse: func(t *testing.T, res response.HealthCheckResponse) {
-				assert.Equal(t, response.HealthCheckResponse{
-					Message:     failedStatusMessage,
-					ServiceName: "bookmark-service",
-					InstanceID:  "instance-1",
-				}, res)
+				assert.Equal(t, failedStatusMessage, res.Message)
+				assert.Equal(t, "bookmark-service", res.ServiceName)
+				assert.Equal(t, "instance-1", res.InstanceID)
 			},
 		},
 	}
@@ -59,20 +63,17 @@ func TestHealthCheckService_GetStatus(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Arrange
 			mp := &redis.MockPinger{}
 			tc.setupMock(mp)
 
 			service := NewHealthCheckService(
-				tc.serviceName,
-				tc.instanceID,
+				tc.fields.serviceName,
+				tc.fields.instanceID,
 				mp,
 			)
 
-			// Act
 			res := service.GetStatus()
 
-			// Assert
 			tc.verifyResponse(t, res)
 			mp.AssertExpectations(t)
 			mp.AssertNumberOfCalls(t, "Ping", 1)

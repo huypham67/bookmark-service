@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 var globalLogger *zerolog.Logger
@@ -23,16 +24,10 @@ func Init(envPrefix string) error {
 
 	zerolog.SetGlobalLevel(level)
 
-	logger := zerolog.New(os.Stdout).
+	log.Logger = zerolog.New(os.Stdout).
 		With().
 		Timestamp().
 		Logger()
-	globalLogger = &logger
 
 	return nil
-}
-
-// Get returns the global logger instance
-func Get() *zerolog.Logger {
-	return globalLogger
 }

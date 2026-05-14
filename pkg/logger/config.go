@@ -10,9 +10,10 @@ type LoggerConfig struct {
 // LoadLoggerConfig loads logger configuration from environment variables with the given prefix.
 func LoadLoggerConfig(prefix string) (*LoggerConfig, error) {
 	cfg := &LoggerConfig{}
-	err := envconfig.Process(prefix, cfg)
-	if err != nil {
+
+	if err := envconfig.Process(prefix, cfg); err != nil {
 		return nil, err
 	}
+
 	return cfg, nil
 }
