@@ -57,19 +57,17 @@
 				
 				<option value="file0">github.com/huypham67/bookmark-management/internal/api/router.go (88.9%)</option>
 				
-				<option value="file1">github.com/huypham67/bookmark-management/internal/config/config.go (84.6%)</option>
+				<option value="file1">github.com/huypham67/bookmark-management/internal/handler/health_handler.go (100.0%)</option>
 				
-				<option value="file2">github.com/huypham67/bookmark-management/internal/handler/health/health_handler.go (100.0%)</option>
+				<option value="file2">github.com/huypham67/bookmark-management/internal/handler/link_handler.go (100.0%)</option>
 				
-				<option value="file3">github.com/huypham67/bookmark-management/internal/handler/link/link_handler.go (100.0%)</option>
+				<option value="file3">github.com/huypham67/bookmark-management/internal/integration/test_helper.go (100.0%)</option>
 				
 				<option value="file4">github.com/huypham67/bookmark-management/internal/repository/link_repository.go (100.0%)</option>
 				
-				<option value="file5">github.com/huypham67/bookmark-management/internal/service/health/health_service.go (100.0%)</option>
+				<option value="file5">github.com/huypham67/bookmark-management/internal/service/health_service.go (100.0%)</option>
 				
-				<option value="file6">github.com/huypham67/bookmark-management/internal/service/link/link_service.go (92.3%)</option>
-				
-				<option value="file7">github.com/huypham67/bookmark-management/internal/utils/random.go (85.7%)</option>
+				<option value="file6">github.com/huypham67/bookmark-management/internal/service/link_service.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -98,8 +96,7 @@ import (
         "net/http"
 
         "github.com/gin-gonic/gin"
-        "github.com/huypham67/bookmark-management/internal/handler/health"
-        "github.com/huypham67/bookmark-management/internal/handler/link"
+        "github.com/huypham67/bookmark-management/internal/handler"
         swaggerFiles "github.com/swaggo/files"
         ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -107,15 +104,10 @@ import (
 // Router wraps the Gin engine and application server configuration.
 type Router struct {
         engine *gin.Engine
-        port   string
 }
 
 // NewRouter creates and configures a new HTTP router with all API endpoints.
-func NewRouter(
-        port string,
-        healthCheckHandler health.HealthCheck,
-        linkHandler link.Link,
-) *Router <span class="cov10" title="36">{
+func NewRouter() *Router <span class="cov10" title="9">{
         engine := gin.Default()
 
         engine.GET(
@@ -123,102 +115,66 @@ func NewRouter(
                 ginSwagger.WrapHandler(swaggerFiles.Handler),
         )
 
-        apiV1 := engine.Group("/api/v1")
-        </span><span class="cov10" title="36">{
-                apiV1.GET(
-                        "/health-check",
-                        healthCheckHandler.GetHealthCheck,
-                )
-
-                apiV1.POST("/links/shorten-url", linkHandler.ShortenURL)
-        }</span>
-
-        <span class="cov10" title="36">return &amp;Router{
+        return &amp;Router{
                 engine: engine,
-                port:   port,
-        }</span>
-}
+        }
+}</span>
+
+// GroupV1 returns a router group for API version 1 endpoints.
+func (r *Router) GroupV1() *gin.RouterGroup <span class="cov10" title="9">{
+        return r.engine.Group("/api/v1")
+}</span>
+
+// RegisterHealthRoutes registers all health-check routes.
+func RegisterHealthRoutes(
+        routerGroup *gin.RouterGroup,
+        healthCheckHandler handler.HealthCheck,
+) <span class="cov3" title="2">{
+        routerGroup.GET(
+                "/health-check",
+                healthCheckHandler.GetHealthCheck,
+        )
+}</span>
+
+// RegisterLinkRoutes registers all link management routes.
+func RegisterLinkRoutes(
+        routerGroup *gin.RouterGroup,
+        linkHandler handler.Link,
+) <span class="cov8" title="7">{
+        routerGroup.POST(
+                "/links/shorten",
+                linkHandler.ShortenURL,
+        )
+
+        routerGroup.GET(
+                "/links/redirect/:code",
+                linkHandler.RedirectToURL,
+        )
+}</span>
 
 // ServeHTTP implements the http.Handler interface.
 func (r *Router) ServeHTTP(
         writer http.ResponseWriter,
         request *http.Request,
-) <span class="cov10" title="36">{
+) <span class="cov10" title="9">{
         r.engine.ServeHTTP(writer, request)
 }</span>
 
-// Run starts the HTTP server on the configured port.
-func (r *Router) Run() error <span class="cov0" title="0">{
-        return r.engine.Run(":" + r.port)
+// Engine exposes underlying Gin engine
+func (r *Router) Engine() *gin.Engine <span class="cov0" title="0">{
+        return r.engine
 }</span>
 </pre>
 		
-		<pre class="file" id="file1" style="display: none">package config
-
-import (
-        "strings"
-
-        "github.com/google/uuid"
-        "github.com/kelseyhightower/envconfig"
-)
-
-// AppConfig holds the application-specific configuration.
-type AppConfig struct {
-        AppPort     string `envconfig:"APP_PORT" default:"8080"`
-        ServiceName string `envconfig:"SERVICE_NAME" required:"true"`
-        InstanceID  string `envconfig:"INSTANCE_ID"`
-}
-
-// RedisConfig holds the Redis connection configuration.
-type RedisConfig struct {
-        Host     string `envconfig:"REDIS_HOST" default:"localhost"`
-        Port     string `envconfig:"REDIS_PORT" default:"6379"`
-        Password string `envconfig:"REDIS_PASSWORD" default:""`
-        Database int    `envconfig:"REDIS_DATABASE" default:"0"`
-}
-
-// Config holds the application configuration loaded from environment variables.
-type Config struct {
-        *AppConfig
-        *RedisConfig
-}
-
-// LoadConfig loads application configuration from environment variables.
-func LoadConfig() (*Config, error) <span class="cov10" title="27">{
-        appConfig := &amp;AppConfig{}
-        redisConfig := &amp;RedisConfig{}
-
-        err := envconfig.Process("", appConfig)
-        if err != nil </span><span class="cov0" title="0">{
-                return nil, err
-        }</span>
-
-        <span class="cov10" title="27">err = envconfig.Process("", redisConfig)
-        if err != nil </span><span class="cov0" title="0">{
-                return nil, err
-        }</span>
-
-        <span class="cov10" title="27">appConfig.ServiceName = strings.TrimSpace(appConfig.ServiceName)
-        appConfig.InstanceID = strings.TrimSpace(appConfig.InstanceID)
-
-        if appConfig.InstanceID == "" </span><span class="cov7" title="12">{
-                appConfig.InstanceID = uuid.New().String()
-        }</span>
-
-        <span class="cov10" title="27">return &amp;Config{
-                AppConfig:   appConfig,
-                RedisConfig: redisConfig,
-        }, nil</span>
-}
-</pre>
-		
-		<pre class="file" id="file2" style="display: none">package health
+		<pre class="file" id="file1" style="display: none">package handler
 
 import (
         "net/http"
 
         "github.com/gin-gonic/gin"
-        "github.com/huypham67/bookmark-management/internal/service/health"
+        "github.com/huypham67/bookmark-management/internal/dto/response"
+        "github.com/huypham67/bookmark-management/internal/service"
+        "github.com/rs/zerolog/log"
 )
 
 // HealthCheck defines the contract for health check HTTP handlers.
@@ -227,11 +183,11 @@ type HealthCheck interface {
 }
 
 type healthCheckHandler struct {
-        healthCheckService health.HealthCheck
+        healthCheckService service.HealthCheckService
 }
 
 // NewHealthCheckHandler creates a new health check handler with the given health check service.
-func NewHealthCheckHandler(healthCheckService health.HealthCheck) HealthCheck <span class="cov10" title="54">{
+func NewHealthCheckHandler(healthCheckService service.HealthCheckService) HealthCheck <span class="cov10" title="4">{
         return &amp;healthCheckHandler{
                 healthCheckService: healthCheckService,
         }
@@ -247,40 +203,50 @@ func NewHealthCheckHandler(healthCheckService health.HealthCheck) HealthCheck <s
 // @Success 200 {object} response.HealthCheckResponse
 // @Failure 500 {object} response.HealthCheckResponse
 // @Router /health-check [get]
-func (h *healthCheckHandler) GetHealthCheck(c *gin.Context) <span class="cov8" title="24">{
-        response, err := h.healthCheckService.GetStatus()
-        if err != nil </span><span class="cov5" title="6">{
-                c.JSON(http.StatusInternalServerError, response)
+func (h *healthCheckHandler) GetHealthCheck(c *gin.Context) <span class="cov10" title="4">{
+        var res response.HealthCheckResponse
+        res = h.healthCheckService.GetStatus()
+        if res.Message == "FAILED" </span><span class="cov5" title="2">{
+                log.Error().
+                        Str("message", res.Message).
+                        Msg("500 - health check failed")
+
+                c.JSON(http.StatusInternalServerError, res)
                 return
         }</span>
-        <span class="cov7" title="18">c.JSON(http.StatusOK, response)</span>
+        <span class="cov5" title="2">c.JSON(http.StatusOK, res)</span>
 }
 </pre>
 		
-		<pre class="file" id="file3" style="display: none">package link
+		<pre class="file" id="file2" style="display: none">package handler
 
 import (
         "net/http"
 
         "github.com/gin-gonic/gin"
+        "github.com/go-playground/validator/v10"
         "github.com/huypham67/bookmark-management/internal/dto/request"
         "github.com/huypham67/bookmark-management/internal/dto/response"
-        "github.com/huypham67/bookmark-management/internal/service/link"
+        "github.com/huypham67/bookmark-management/internal/service"
+        "github.com/rs/zerolog/log"
 )
 
 // Link defines the contract for link HTTP handlers.
 type Link interface {
         ShortenURL(c *gin.Context)
+        RedirectToURL(c *gin.Context)
 }
 
 type linkHandler struct {
-        linkService link.Link
+        linkService service.LinkService
+        validate    *validator.Validate
 }
 
 // NewLinkHandler creates a new link handler with the given link service.
-func NewLinkHandler(linkService link.Link) Link <span class="cov10" title="69">{
+func NewLinkHandler(linkService service.LinkService) Link <span class="cov10" title="12">{
         return &amp;linkHandler{
                 linkService: linkService,
+                validate:    validator.New(),
         }
 }</span>
 
@@ -292,24 +258,37 @@ func NewLinkHandler(linkService link.Link) Link <span class="cov10" title="69">{
 // @Accept json
 // @Produce json
 // @Param request body request.ShortenURLRequest true "URL to shorten"
-// @Success 200 {object} response.ShortenURLResponse
+// @Success 200 {object} response.ShortenURLResponse "Shorten URL generated successfully"
 // @Failure 400 {object} gin.H "Invalid request body"
 // @Failure 500 {object} gin.H "Internal server error"
-// @Router /links/shorten-url [post]
-func (h *linkHandler) ShortenURL(c *gin.Context) <span class="cov9" title="66">{
+// @Router /links/shorten [post]
+func (h *linkHandler) ShortenURL(c *gin.Context) <span class="cov8" title="7">{
         var req request.ShortenURLRequest
 
-        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov4" title="6">{
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov1" title="1">{
                 c.JSON(http.StatusBadRequest, gin.H{
                         "error": "Invalid request body",
                 })
-
                 return
         }</span>
 
-        <span class="cov9" title="60">code, err := h.linkService.ShortenURL(req)
+        // Validate the request
+        <span class="cov7" title="6">if err := h.validate.Struct(&amp;req); err != nil </span><span class="cov3" title="2">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": "Validation failed: " + err.Error(),
+                })
+                return
+        }</span>
 
-        if err != nil </span><span class="cov4" title="6">{
+        <span class="cov6" title="4">code, err := h.linkService.ShortenURL(c.Request.Context(), req)
+
+        if err != nil </span><span class="cov3" title="2">{
+                log.Error().
+                        Err(err).
+                        Str("url", req.Url).
+                        Int64("exp", req.Exp).
+                        Msg("500 - failed to shorten URL")
+
                 c.JSON(http.StatusInternalServerError, gin.H{
                         "error": "Internal Server Error",
                 })
@@ -317,25 +296,131 @@ func (h *linkHandler) ShortenURL(c *gin.Context) <span class="cov9" title="66">{
                 return
         }</span>
 
-        <span class="cov9" title="54">c.JSON(http.StatusOK, response.ShortenURLResponse{
+        <span class="cov3" title="2">c.JSON(http.StatusOK, response.ShortenURLResponse{
                 Code:    code,
                 Message: "Shorten URL generated successfully",
         })</span>
 }
+
+// RedirectToURL handles the redirect endpoint.
+//
+// @Summary Redirect to Original URL
+// @Description Redirect user to the original URL based on the shortened code
+// @Tags links
+// @Accept json
+// @Produce json
+// @Param code path string true "Shortened code"
+// @Success 301 "Redirect successful"
+// @Failure 404 {object} gin.H "Short link not found"
+// @Failure 500 {object} gin.H "Internal server error"
+// @Router /links/redirect/{code} [get]
+func (h *linkHandler) RedirectToURL(c *gin.Context) <span class="cov6" title="5">{
+        code := c.Param("code")
+
+        url, err := h.linkService.GetOriginalURL(c.Request.Context(), code)
+
+        if err != nil </span><span class="cov4" title="3">{
+                c.JSON(http.StatusNotFound, gin.H{
+                        "error": "Short link not found",
+                })
+                return
+        }</span>
+
+        <span class="cov3" title="2">c.Redirect(http.StatusFound, url)</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package integration
+
+import (
+        "testing"
+
+        "github.com/huypham67/bookmark-management/internal/api"
+        "github.com/huypham67/bookmark-management/internal/handler"
+        "github.com/huypham67/bookmark-management/internal/repository"
+        "github.com/huypham67/bookmark-management/internal/service"
+        "github.com/huypham67/bookmark-management/pkg/redis"
+        "github.com/huypham67/bookmark-management/pkg/utils"
+)
+
+// TestApp represents the test application with its dependencies.
+type TestApp struct {
+        Router    *api.Router
+        MockRedis *redis.MockRedis
+}
+
+func setupHealthCheckTestApp(t *testing.T, serviceName string, instanceID string) *TestApp <span class="cov4" title="2">{
+        t.Helper()
+
+        mockRedis := redis.NewMockRedis(t)
+
+        pinger := redis.NewPinger(mockRedis.Client)
+
+        healthService := service.NewHealthCheckService(serviceName, instanceID, pinger)
+
+        healthHandler := handler.NewHealthCheckHandler(healthService)
+
+        router := api.NewRouter()
+
+        api.RegisterHealthRoutes(
+                router.GroupV1(),
+                healthHandler,
+        )
+
+        return &amp;TestApp{
+                Router:    router,
+                MockRedis: mockRedis,
+        }
+}</span>
+
+func setupLinkTestApp(t *testing.T) *TestApp <span class="cov10" title="7">{
+        t.Helper()
+
+        mockRedis := redis.NewMockRedis(t)
+
+        linkRepository := repository.NewLinkRepository(
+                &amp;redis.RedisClient{
+                        Client: mockRedis.Client,
+                },
+        )
+
+        linkService := service.NewLinkService(
+                linkRepository,
+                utils.NewCodeGenerator(),
+        )
+
+        linkHandler := handler.NewLinkHandler(
+                linkService,
+        )
+
+        router := api.NewRouter()
+
+        api.RegisterLinkRoutes(
+                router.GroupV1(),
+                linkHandler,
+        )
+
+        return &amp;TestApp{
+                Router:    router,
+                MockRedis: mockRedis,
+        }
+}</span>
 </pre>
 		
 		<pre class="file" id="file4" style="display: none">package repository
 
 import (
+        "context"
         "time"
 
-        "github.com/huypham67/bookmark-management/infrastructure/redis"
+        "github.com/huypham67/bookmark-management/pkg/redis"
 )
 
 // Link defines the contract for link repository operations.
 type Link interface {
-        SaveLink(code string, url string, exp int64) error
-        CheckExists(code string) (bool, error)
+        SaveLink(ctx context.Context, code string, url string, exp int64) error
+        CheckExists(ctx context.Context, code string) (bool, error)
+        GetLink(ctx context.Context, code string) (string, error)
 }
 
 type linkRepository struct {
@@ -343,56 +428,60 @@ type linkRepository struct {
 }
 
 // NewLinkRepository creates a new link repository with the given Redis client.
-func NewLinkRepository(redisClient *redis.RedisClient) Link <span class="cov10" title="72">{
+func NewLinkRepository(redisClient *redis.RedisClient) Link <span class="cov10" title="14">{
         return &amp;linkRepository{
                 redisClient: redisClient,
         }
 }</span>
 
 // SaveLink saves a shortened URL code mapping to the provided URL in Redis with an expiration time.
-func (r *linkRepository) SaveLink(code string, url string, exp int64) error <span class="cov9" title="63">{
-        return r.redisClient.Set(
-                code,
-                url,
-                time.Duration(exp)*time.Second,
-        )
+func (r *linkRepository) SaveLink(ctx context.Context, code string, url string, exp int64) error <span class="cov8" title="9">{
+        return r.redisClient.Client.Set(ctx, code, url, time.Duration(exp)*time.Second).Err()
 }</span>
 
 // CheckExists checks whether a shortened URL code already exists in Redis.
-func (r *linkRepository) CheckExists(code string) (bool, error) <span class="cov9" title="57">{
-        return r.redisClient.Exists(
-                code,
-        )
-}</span>
+func (r *linkRepository) CheckExists(ctx context.Context, code string) (bool, error) <span class="cov8" title="8">{
+        result, err := r.redisClient.Client.Exists(ctx, code).Result()
+        if err != nil </span><span class="cov3" title="2">{
+                return false, err
+        }</span>
+        <span class="cov7" title="6">return result &gt; 0, nil</span>
+}
+
+// GetLink retrieves the original URL for a given shortened code from Redis.
+func (r *linkRepository) GetLink(ctx context.Context, code string) (string, error) <span class="cov6" title="5">{
+        url, err := r.redisClient.Client.Get(ctx, code).Result()
+        if err != nil </span><span class="cov3" title="2">{
+                return "", err
+        }</span>
+        <span class="cov4" title="3">return url, nil</span>
+}
 </pre>
 		
-		<pre class="file" id="file5" style="display: none">package health
+		<pre class="file" id="file5" style="display: none">package service
 
 import (
         "github.com/huypham67/bookmark-management/internal/dto/response"
+        "github.com/huypham67/bookmark-management/pkg/redis"
+        "github.com/rs/zerolog/log"
 )
 
 const statusMessage = "OK"
 const failedStatusMessage = "FAILED"
 
-// HealthCheck defines the contract for health check services.
-type HealthCheck interface {
-        GetStatus() (response.HealthCheckResponse, error)
-}
-
-// Pinger defines the contract for health check ping operations.
-type Pinger interface {
-        Ping() error
+// HealthCheckService defines the contract for health check services.
+type HealthCheckService interface {
+        GetStatus() response.HealthCheckResponse
 }
 
 type healthCheckService struct {
         serviceName string
         instanceID  string
-        pinger      Pinger
+        pinger      redis.Pinger
 }
 
 // NewHealthCheckService creates a new health check service.
-func NewHealthCheckService(serviceName string, instanceID string, pinger Pinger) HealthCheck <span class="cov10" title="60">{
+func NewHealthCheckService(serviceName string, instanceID string, pinger redis.Pinger) HealthCheckService <span class="cov10" title="4">{
         return &amp;healthCheckService{
                 serviceName: serviceName,
                 instanceID:  instanceID,
@@ -400,103 +489,111 @@ func NewHealthCheckService(serviceName string, instanceID string, pinger Pinger)
         }
 }</span>
 
-// GetStatus returns the current application health status with service name, instance ID, and Redis connection status.
-func (s *healthCheckService) GetStatus() (response.HealthCheckResponse, error) <span class="cov8" title="30">{
-        if err := s.pinger.Ping(); err != nil </span><span class="cov6" title="12">{
+// GetStatus checks the health status of the application by pinging Redis and returns a HealthCheckResponse.
+func (s *healthCheckService) GetStatus() response.HealthCheckResponse <span class="cov10" title="4">{
+        if err := s.pinger.Ping(); err != nil </span><span class="cov5" title="2">{
+                log.Error().
+                        Err(err).
+                        Str("service", s.serviceName).
+                        Msg("Redis connection failed - health check")
+
                 return response.HealthCheckResponse{
                         Message:     failedStatusMessage,
                         ServiceName: s.serviceName,
                         InstanceID:  s.instanceID,
-                }, err
+                }
         }</span>
 
-        <span class="cov7" title="18">return response.HealthCheckResponse{
+        <span class="cov5" title="2">return response.HealthCheckResponse{
                 Message:     statusMessage,
                 ServiceName: s.serviceName,
                 InstanceID:  s.instanceID,
-        }, nil</span>
+        }</span>
 }
 </pre>
 		
-		<pre class="file" id="file6" style="display: none">package link
+		<pre class="file" id="file6" style="display: none">package service
 
 import (
+        "context"
+
         "github.com/huypham67/bookmark-management/internal/dto/request"
         "github.com/huypham67/bookmark-management/internal/repository"
-        "github.com/huypham67/bookmark-management/internal/utils"
+        "github.com/huypham67/bookmark-management/pkg/utils"
+        "github.com/rs/zerolog/log"
 )
 
-// Link defines the contract for link services.
-type Link interface {
-        ShortenURL(request request.ShortenURLRequest) (string, error)
+// LinkService defines the contract for link services.
+type LinkService interface {
+        ShortenURL(ctx context.Context, request request.ShortenURLRequest) (string, error)
+        GetOriginalURL(ctx context.Context, code string) (string, error)
 }
 
 type linkService struct {
-        linkRepo repository.Link
+        linkRepo      repository.Link
+        codeGenerator utils.CodeGenerator
 }
 
-// NewLinkService creates a new link service with the given repository.
-func NewLinkService(linkRepo repository.Link) Link <span class="cov9" title="63">{
+// NewLinkService creates a new link service with the given repository and code generator.
+func NewLinkService(linkRepo repository.Link, codeGenerator utils.CodeGenerator) LinkService <span class="cov10" title="14">{
         return &amp;linkService{
-                linkRepo: linkRepo,
+                linkRepo:      linkRepo,
+                codeGenerator: codeGenerator,
         }
 }</span>
 
 const shortCodeLength = 7
 
-// ShortenURL generates a random short code for the given URL and saves it to the repository.
-// If the generated code already exists, it recursively generates a new one.
-func (link *linkService) ShortenURL(request request.ShortenURLRequest) (string, error) <span class="cov10" title="72">{
-        code, err := utils.GenerateRandomCode(shortCodeLength)
+// ShortenURL generates a unique short code for the provided URL and saves the mapping to Redis.
+func (link *linkService) ShortenURL(ctx context.Context, request request.ShortenURLRequest) (string, error) <span class="cov8" title="8">{
+        code, err := link.codeGenerator.Generate(shortCodeLength)
 
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov1" title="1">{
+                log.Error().
+                        Err(err).
+                        Msg("failed to generate short code")
                 return "", err
         }</span>
 
-        <span class="cov10" title="72">exists, err := link.linkRepo.CheckExists(code)
+        <span class="cov7" title="7">exists, err := link.linkRepo.CheckExists(ctx, code)
 
-        if err != nil </span><span class="cov4" title="6">{
+        if err != nil </span><span class="cov3" title="2">{
+                log.Error().
+                        Err(err).
+                        Str("code", code).
+                        Msg("failed to check if short code exists")
                 return "", err
         }</span>
 
-        <span class="cov9" title="66">if exists </span><span class="cov6" title="12">{
-                return link.ShortenURL(request)
+        <span class="cov6" title="5">if exists </span><span class="cov1" title="1">{
+                return link.ShortenURL(ctx, request)
         }</span>
-        <span class="cov9" title="54">err = link.linkRepo.SaveLink(code, request.Url, request.Exp)
+        <span class="cov5" title="4">err = link.linkRepo.SaveLink(ctx, code, request.Url, request.Exp)
 
-        if err != nil </span><span class="cov3" title="3">{
+        if err != nil </span><span class="cov1" title="1">{
+                log.Error().
+                        Err(err).
+                        Str("code", code).
+                        Str("url", request.Url).
+                        Msg("failed to save short link to Redis")
                 return "", err
         }</span>
-        <span class="cov9" title="51">return code, nil</span>
+        <span class="cov4" title="3">return code, nil</span>
 }
-</pre>
-		
-		<pre class="file" id="file7" style="display: none">package utils
 
-import (
-        "crypto/rand"
-        "math/big"
-)
+// GetOriginalURL retrieves the original URL for a given shortened code.
+func (link *linkService) GetOriginalURL(ctx context.Context, code string) (string, error) <span class="cov6" title="5">{
+        url, err := link.linkRepo.GetLink(ctx, code)
 
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        if err != nil </span><span class="cov4" title="3">{
+                log.Error().
+                        Err(err).
+                        Str("code", code).
+                        Msg("failed to retrieve original URL from Redis")
+                return "", err
+        }</span>
 
-func GenerateRandomCode(length int) (string, error) <span class="cov7" title="72">{
-        result := make([]byte, length)
-
-        for i := range result </span><span class="cov10" title="504">{
-                randomIndex, err := rand.Int(
-                        rand.Reader,
-                        big.NewInt(int64(len(charset))),
-                )
-
-                if err != nil </span><span class="cov0" title="0">{
-                        return "", err
-                }</span>
-
-                <span class="cov10" title="504">result[i] = charset[randomIndex.Int64()]</span>
-        }
-
-        <span class="cov7" title="72">return string(result), nil</span>
+        <span class="cov3" title="2">return url, nil</span>
 }
 </pre>
 		

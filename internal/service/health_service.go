@@ -1,30 +1,27 @@
-package health
+package service
 
 import (
 	"github.com/huypham67/bookmark-management/internal/dto/response"
+	"github.com/huypham67/bookmark-management/pkg/redis"
+	"github.com/rs/zerolog/log"
 )
 
 const statusMessage = "OK"
 const failedStatusMessage = "FAILED"
 
-// HealthCheck defines the contract for health check services.
-type HealthCheck interface {
-	GetStatus() (response.HealthCheckResponse, error)
-}
-
-// Pinger defines the contract for health check ping operations.
-type Pinger interface {
-	Ping() error
+// HealthCheckService defines the contract for health check services.
+type HealthCheckService interface {
+	GetStatus() response.HealthCheckResponse
 }
 
 type healthCheckService struct {
 	serviceName string
 	instanceID  string
-	pinger      Pinger
+	pinger      redis.Pinger
 }
 
 // NewHealthCheckService creates a new health check service.
-func NewHealthCheckService(serviceName string, instanceID string, pinger Pinger) HealthCheck {
+func NewHealthCheckService(serviceName string, instanceID string, pinger redis.Pinger) HealthCheckService {
 	return &healthCheckService{
 		serviceName: serviceName,
 		instanceID:  instanceID,
@@ -32,19 +29,24 @@ func NewHealthCheckService(serviceName string, instanceID string, pinger Pinger)
 	}
 }
 
-// GetStatus returns the current application health status with service name, instance ID, and Redis connection status.
-func (s *healthCheckService) GetStatus() (response.HealthCheckResponse, error) {
+// GetStatus checks the health status of the application by pinging Redis and returns a HealthCheckResponse.
+func (s *healthCheckService) GetStatus() response.HealthCheckResponse {
 	if err := s.pinger.Ping(); err != nil {
+		log.Error().
+			Err(err).
+			Str("service", s.serviceName).
+			Msg("Redis connection failed - health check")
+
 		return response.HealthCheckResponse{
 			Message:     failedStatusMessage,
 			ServiceName: s.serviceName,
 			InstanceID:  s.instanceID,
-		}, err
+		}
 	}
 
 	return response.HealthCheckResponse{
 		Message:     statusMessage,
 		ServiceName: s.serviceName,
 		InstanceID:  s.instanceID,
-	}, nil
+	}
 }
