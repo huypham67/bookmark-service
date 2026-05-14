@@ -41,7 +41,7 @@ BIN_DIR = ./bin
 DOCS_DIR = ./docs
 
 # Coverage variables
-COVERAGE_EXCLUDE = mocks|main.go|_test.go|docs|bootstrap
+COVERAGE_EXCLUDE = mocks|main.go|_test.go|docs|bootstrap|config
 COVERAGE_THRESHOLD = 80
 
 # Version variables

@@ -1,10 +1,12 @@
-package health
+package handler
 
 import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/huypham67/bookmark-management/internal/service/health"
+	"github.com/huypham67/bookmark-management/internal/dto/response"
+	"github.com/huypham67/bookmark-management/internal/service"
+	"github.com/huypham67/bookmark-management/pkg/logger"
 )
 
 // HealthCheck defines the contract for health check HTTP handlers.
@@ -13,11 +15,11 @@ type HealthCheck interface {
 }
 
 type healthCheckHandler struct {
-	healthCheckService health.HealthCheck
+	healthCheckService service.HealthCheckService
 }
 
 // NewHealthCheckHandler creates a new health check handler with the given health check service.
-func NewHealthCheckHandler(healthCheckService health.HealthCheck) HealthCheck {
+func NewHealthCheckHandler(healthCheckService service.HealthCheckService) HealthCheck {
 	return &healthCheckHandler{
 		healthCheckService: healthCheckService,
 	}
@@ -34,10 +36,15 @@ func NewHealthCheckHandler(healthCheckService health.HealthCheck) HealthCheck {
 // @Failure 500 {object} response.HealthCheckResponse
 // @Router /health-check [get]
 func (h *healthCheckHandler) GetHealthCheck(c *gin.Context) {
-	response, err := h.healthCheckService.GetStatus()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, response)
+	var res response.HealthCheckResponse
+	res = h.healthCheckService.GetStatus()
+	if res.Message == "FAILED" {
+		logger.Get().Error().
+			Str("message", res.Message).
+			Msg("500 - health check failed")
+
+		c.JSON(http.StatusInternalServerError, res)
 		return
 	}
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, res)
 }

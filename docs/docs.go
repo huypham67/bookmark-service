@@ -44,7 +44,48 @@ const docTemplate = `{
                 }
             }
         },
-        "/links/shorten-url": {
+        "/links/redirect/{code}": {
+            "get": {
+                "description": "Redirect user to the original URL based on the shortened code",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "links"
+                ],
+                "summary": "Redirect to Original URL",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shortened code",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "301": {
+                        "description": "Redirect successful"
+                    },
+                    "404": {
+                        "description": "Short link not found",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    }
+                }
+            }
+        },
+        "/links/shorten": {
             "post": {
                 "description": "Create a shortened URL code and save it to Redis",
                 "consumes": [
@@ -70,7 +111,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Shorten URL generated successfully",
                         "schema": {
                             "$ref": "#/definitions/github_com_huypham67_bookmark-management_internal_dto_response.ShortenURLResponse"
                         }
@@ -98,9 +139,13 @@ const docTemplate = `{
         },
         "github_com_huypham67_bookmark-management_internal_dto_request.ShortenURLRequest": {
             "type": "object",
+            "required": [
+                "url"
+            ],
             "properties": {
                 "exp": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "url": {
                     "type": "string"

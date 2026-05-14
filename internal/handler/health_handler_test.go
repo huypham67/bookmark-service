@@ -1,15 +1,14 @@
-package health
+package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/huypham67/bookmark-management/internal/dto/response"
-	"github.com/huypham67/bookmark-management/mocks"
+	"github.com/huypham67/bookmark-management/internal/service/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,20 +17,19 @@ func TestHealthCheckHandler_GetHealthCheck(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		setupMock      func(*mocks.HealthCheck)
+		setupMock      func(*mocks.HealthCheckService)
 		expectedCode   int
 		verifyResponse func(*testing.T, *response.HealthCheckResponse) bool
 	}{
 		{
 			name: "should return 200 with correct service name and instance ID",
-			setupMock: func(mockService *mocks.HealthCheck) {
+			setupMock: func(mockService *mocks.HealthCheckService) {
 				mockService.On("GetStatus").Return(
 					response.HealthCheckResponse{
 						Message:     "OK",
 						ServiceName: "bookmark-service",
 						InstanceID:  "instance-1",
 					},
-					nil,
 				)
 			},
 			expectedCode: http.StatusOK,
@@ -43,14 +41,13 @@ func TestHealthCheckHandler_GetHealthCheck(t *testing.T) {
 		},
 		{
 			name: "should return 200 with different service configuration",
-			setupMock: func(mockService *mocks.HealthCheck) {
+			setupMock: func(mockService *mocks.HealthCheckService) {
 				mockService.On("GetStatus").Return(
 					response.HealthCheckResponse{
 						Message:     "OK",
 						ServiceName: "auth-service",
 						InstanceID:  "prod-2",
 					},
-					nil,
 				)
 			},
 			expectedCode: http.StatusOK,
@@ -62,14 +59,13 @@ func TestHealthCheckHandler_GetHealthCheck(t *testing.T) {
 		},
 		{
 			name: "should return 500 when service returns error",
-			setupMock: func(mockService *mocks.HealthCheck) {
+			setupMock: func(mockService *mocks.HealthCheckService) {
 				mockService.On("GetStatus").Return(
 					response.HealthCheckResponse{
 						Message:     "FAILED",
 						ServiceName: "bookmark-service",
 						InstanceID:  "instance-1",
 					},
-					errors.New("redis connection failed"),
 				)
 			},
 			expectedCode: http.StatusInternalServerError,
@@ -81,14 +77,13 @@ func TestHealthCheckHandler_GetHealthCheck(t *testing.T) {
 		},
 		{
 			name: "should return 500 with FAILED status on timeout error",
-			setupMock: func(mockService *mocks.HealthCheck) {
+			setupMock: func(mockService *mocks.HealthCheckService) {
 				mockService.On("GetStatus").Return(
 					response.HealthCheckResponse{
 						Message:     "FAILED",
 						ServiceName: "test-service",
 						InstanceID:  "prod-1",
 					},
-					errors.New("timeout"),
 				)
 			},
 			expectedCode: http.StatusInternalServerError,
@@ -100,14 +95,13 @@ func TestHealthCheckHandler_GetHealthCheck(t *testing.T) {
 		},
 		{
 			name: "should handle empty service name on success",
-			setupMock: func(mockService *mocks.HealthCheck) {
+			setupMock: func(mockService *mocks.HealthCheckService) {
 				mockService.On("GetStatus").Return(
 					response.HealthCheckResponse{
 						Message:     "OK",
 						ServiceName: "",
 						InstanceID:  "test-instance",
 					},
-					nil,
 				)
 			},
 			expectedCode: http.StatusOK,
@@ -119,14 +113,13 @@ func TestHealthCheckHandler_GetHealthCheck(t *testing.T) {
 		},
 		{
 			name: "should handle empty instance ID on success",
-			setupMock: func(mockService *mocks.HealthCheck) {
+			setupMock: func(mockService *mocks.HealthCheckService) {
 				mockService.On("GetStatus").Return(
 					response.HealthCheckResponse{
 						Message:     "OK",
 						ServiceName: "my-service",
 						InstanceID:  "",
 					},
-					nil,
 				)
 			},
 			expectedCode: http.StatusOK,
@@ -146,7 +139,7 @@ func TestHealthCheckHandler_GetHealthCheck(t *testing.T) {
 
 			gin.SetMode(gin.TestMode)
 
-			mockService := mocks.NewHealthCheck(t)
+			mockService := mocks.NewHealthCheckService(t)
 			tc.setupMock(mockService)
 
 			handler := NewHealthCheckHandler(mockService)

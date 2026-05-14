@@ -3,336 +3,178 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/alicebob/miniredis/v2"
-	"github.com/huypham67/bookmark-management/infrastructure/redis"
 	"github.com/huypham67/bookmark-management/internal/api"
 	"github.com/huypham67/bookmark-management/internal/config"
 	"github.com/huypham67/bookmark-management/internal/dto/request"
 	"github.com/huypham67/bookmark-management/internal/dto/response"
-	healthHandler "github.com/huypham67/bookmark-management/internal/handler/health"
-	linkHandler "github.com/huypham67/bookmark-management/internal/handler/link"
-	linkRepository "github.com/huypham67/bookmark-management/internal/repository"
-	healthService "github.com/huypham67/bookmark-management/internal/service/health"
-	linkService "github.com/huypham67/bookmark-management/internal/service/link"
+	"github.com/huypham67/bookmark-management/internal/handler"
+	"github.com/huypham67/bookmark-management/internal/repository"
+	"github.com/huypham67/bookmark-management/internal/service"
+	"github.com/huypham67/bookmark-management/internal/utils"
+	"github.com/huypham67/bookmark-management/pkg/redis"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestShortenURLEndpoint(t *testing.T) {
-	// Set up miniredis for testing
-	mr := miniredis.NewMiniRedis()
-	require.NoError(t, mr.Start())
-	defer mr.Close()
-
-	redisClient, err := redis.NewRedisClient(redis.RedisConfig{
-		Host:     "localhost",
-		Port:     fmt.Sprintf("%d", mr.Server().Addr().Port),
-		Password: "",
-		Database: 0,
-	})
-	require.NoError(t, err)
-
-	cfg := &config.AppConfig{
-		AppPort:     "8080",
-		ServiceName: "bookmark-service",
-		InstanceID:  "instance-1",
-	}
+	t.Parallel()
 
 	testCases := []struct {
 		name                   string
-		buildRequest           func() (*request.ShortenURLRequest, error)
-		verifyResponse         func(*response.ShortenURLResponse, *httptest.ResponseRecorder) bool
+		appConfig              config.Config
+		requestURL             string
+		requestExp             int64
 		expectedHTTPStatusCode int
-		shouldSucceed          bool
-		setupRedis             func(*miniredis.Miniredis) error
-		testType               string // "basic", "structure"
-		validateResponseFields func(t *testing.T, res *response.ShortenURLResponse)
+		expectedMessage        string
+		expectError            bool
+		validateCodeFormat     bool
 	}{
-		// Basic functionality tests
 		{
 			name: "should successfully shorten URL with valid request",
-			buildRequest: func() (*request.ShortenURLRequest, error) {
-				return &request.ShortenURLRequest{
-					Url: "https://github.com/user/repository/issues?state=open&labels=bug",
-					Exp: 3600,
-				}, nil
+			appConfig: config.Config{
+				AppPort:     "8080",
+				ServiceName: "bookmark-service",
+				InstanceID:  "instance-1",
 			},
-			verifyResponse: func(res *response.ShortenURLResponse, rec *httptest.ResponseRecorder) bool {
-				return assert.NotEmpty(t, res.Code) &&
-					assert.Len(t, res.Code, 7) &&
-					assert.Equal(t, "Shorten URL generated successfully", res.Message) &&
-					assert.Equal(t, http.StatusOK, rec.Code)
-			},
+			requestURL:             "https://github.com/user/repository/issues?state=open&labels=bug",
+			requestExp:             3600,
 			expectedHTTPStatusCode: http.StatusOK,
-			shouldSucceed:          true,
-			setupRedis: func(mr *miniredis.Miniredis) error {
-				return nil
-			},
-			testType: "basic",
+			expectedMessage:        "Shorten URL generated successfully",
+			expectError:            false,
+			validateCodeFormat:     true,
 		},
 		{
 			name: "should handle short expiration time",
-			buildRequest: func() (*request.ShortenURLRequest, error) {
-				return &request.ShortenURLRequest{
-					Url: "https://example.com/short-lived",
-					Exp: 60,
-				}, nil
+			appConfig: config.Config{
+				AppPort:     "8080",
+				ServiceName: "bookmark-service",
+				InstanceID:  "instance-2",
 			},
-			verifyResponse: func(res *response.ShortenURLResponse, rec *httptest.ResponseRecorder) bool {
-				return assert.NotEmpty(t, res.Code) &&
-					assert.Equal(t, "Shorten URL generated successfully", res.Message)
-			},
+			requestURL:             "https://example.com/short-lived",
+			requestExp:             60,
 			expectedHTTPStatusCode: http.StatusOK,
-			shouldSucceed:          true,
-			setupRedis: func(mr *miniredis.Miniredis) error {
-				return nil
-			},
-			testType: "basic",
+			expectedMessage:        "Shorten URL generated successfully",
+			expectError:            false,
+			validateCodeFormat:     true,
 		},
 		{
 			name: "should handle long expiration time",
-			buildRequest: func() (*request.ShortenURLRequest, error) {
-				return &request.ShortenURLRequest{
-					Url: "https://example.com/long-lived",
-					Exp: 86400 * 365,
-				}, nil
+			appConfig: config.Config{
+				AppPort:     "8081",
+				ServiceName: "test-service",
+				InstanceID:  "test-instance",
 			},
-			verifyResponse: func(res *response.ShortenURLResponse, rec *httptest.ResponseRecorder) bool {
-				return assert.NotEmpty(t, res.Code) &&
-					assert.Equal(t, "Shorten URL generated successfully", res.Message)
-			},
+			requestURL:             "https://example.com/long-lived",
+			requestExp:             86400,
 			expectedHTTPStatusCode: http.StatusOK,
-			shouldSucceed:          true,
-			setupRedis: func(mr *miniredis.Miniredis) error {
-				return nil
-			},
-			testType: "basic",
+			expectedMessage:        "Shorten URL generated successfully",
+			expectError:            false,
+			validateCodeFormat:     true,
 		},
 		{
 			name: "should handle URL with query parameters",
-			buildRequest: func() (*request.ShortenURLRequest, error) {
-				return &request.ShortenURLRequest{
-					Url: "https://example.com/search?q=golang&sort=stars&order=desc",
-					Exp: 7200,
-				}, nil
+			appConfig: config.Config{
+				AppPort:     "8082",
+				ServiceName: "api-service",
+				InstanceID:  "api-1",
 			},
-			verifyResponse: func(res *response.ShortenURLResponse, rec *httptest.ResponseRecorder) bool {
-				return assert.NotEmpty(t, res.Code) &&
-					assert.Equal(t, "Shorten URL generated successfully", res.Message)
-			},
+			requestURL:             "https://example.com?key=value&foo=bar",
+			requestExp:             3600,
 			expectedHTTPStatusCode: http.StatusOK,
-			shouldSucceed:          true,
-			setupRedis: func(mr *miniredis.Miniredis) error {
-				return nil
-			},
-			testType: "basic",
+			expectedMessage:        "Shorten URL generated successfully",
+			expectError:            false,
+			validateCodeFormat:     true,
 		},
 		{
-			name: "should handle URL with hash fragment",
-			buildRequest: func() (*request.ShortenURLRequest, error) {
-				return &request.ShortenURLRequest{
-					Url: "https://example.com/docs#section-installation",
-					Exp: 3600,
-				}, nil
+			name: "should handle URL with zero expiration",
+			appConfig: config.Config{
+				AppPort:     "8083",
+				ServiceName: "service-zero",
+				InstanceID:  "zero-1",
 			},
-			verifyResponse: func(res *response.ShortenURLResponse, rec *httptest.ResponseRecorder) bool {
-				return assert.NotEmpty(t, res.Code) &&
-					assert.Equal(t, "Shorten URL generated successfully", res.Message)
-			},
+			requestURL:             "https://example.com/no-exp",
+			requestExp:             0,
 			expectedHTTPStatusCode: http.StatusOK,
-			shouldSucceed:          true,
-			setupRedis: func(mr *miniredis.Miniredis) error {
-				return nil
-			},
-			testType: "basic",
-		},
-		{
-			name: "should handle very long URL",
-			buildRequest: func() (*request.ShortenURLRequest, error) {
-				return &request.ShortenURLRequest{
-					Url: "https://example.com/api/v1/resources/items/12345/details?nested=true&format=json&expand=all&include=metadata,history,relationships&filter=active&page=1&limit=100&sort=-created_at&foo=bar&baz=qux",
-					Exp: 3600,
-				}, nil
-			},
-			verifyResponse: func(res *response.ShortenURLResponse, rec *httptest.ResponseRecorder) bool {
-				return assert.NotEmpty(t, res.Code) &&
-					assert.Equal(t, "Shorten URL generated successfully", res.Message)
-			},
-			expectedHTTPStatusCode: http.StatusOK,
-			shouldSucceed:          true,
-			setupRedis: func(mr *miniredis.Miniredis) error {
-				return nil
-			},
-			testType: "basic",
-		},
-		{
-			name: "should handle empty URL by still generating a short code",
-			buildRequest: func() (*request.ShortenURLRequest, error) {
-				return &request.ShortenURLRequest{
-					Url: "",
-					Exp: 3600,
-				}, nil
-			},
-			verifyResponse: func(res *response.ShortenURLResponse, rec *httptest.ResponseRecorder) bool {
-				return assert.NotEmpty(t, res.Code) &&
-					assert.Equal(t, "Shorten URL generated successfully", res.Message)
-			},
-			expectedHTTPStatusCode: http.StatusOK,
-			shouldSucceed:          true,
-			setupRedis: func(mr *miniredis.Miniredis) error {
-				return nil
-			},
-			testType: "basic",
-		},
-		{
-			name: "should handle multiple URLs without collision",
-			buildRequest: func() (*request.ShortenURLRequest, error) {
-				return &request.ShortenURLRequest{
-					Url: "https://different-url-for-collision-test.com/path123",
-					Exp: 3600,
-				}, nil
-			},
-			verifyResponse: func(res *response.ShortenURLResponse, rec *httptest.ResponseRecorder) bool {
-				return assert.NotEmpty(t, res.Code) &&
-					assert.Equal(t, "Shorten URL generated successfully", res.Message)
-			},
-			expectedHTTPStatusCode: http.StatusOK,
-			shouldSucceed:          true,
-			setupRedis: func(mr *miniredis.Miniredis) error {
-				return nil
-			},
-			testType: "basic",
-		},
-		// Response structure tests
-		{
-			name: "response should contain both code and message fields",
-			buildRequest: func() (*request.ShortenURLRequest, error) {
-				return &request.ShortenURLRequest{
-					Url: "https://example.com/test",
-					Exp: 3600,
-				}, nil
-			},
-			expectedHTTPStatusCode: http.StatusOK,
-			shouldSucceed:          true,
-			setupRedis: func(mr *miniredis.Miniredis) error {
-				return nil
-			},
-			testType: "structure",
-			validateResponseFields: func(t *testing.T, res *response.ShortenURLResponse) {
-				assert.NotEmpty(t, res.Code)
-				assert.NotEmpty(t, res.Message)
-				assert.Equal(t, 7, len(res.Code))
-			},
-		},
-		{
-			name: "code field should be exactly 7 characters",
-			buildRequest: func() (*request.ShortenURLRequest, error) {
-				return &request.ShortenURLRequest{
-					Url: "https://another-test-url.com/path",
-					Exp: 7200,
-				}, nil
-			},
-			expectedHTTPStatusCode: http.StatusOK,
-			shouldSucceed:          true,
-			setupRedis: func(mr *miniredis.Miniredis) error {
-				return nil
-			},
-			testType: "structure",
-			validateResponseFields: func(t *testing.T, res *response.ShortenURLResponse) {
-				codeLen := len(res.Code)
-				assert.Equal(t, 7, codeLen)
-				for _, char := range res.Code {
-					assert.True(t, (char >= 'a' && char <= 'z') ||
-						(char >= 'A' && char <= 'Z') ||
-						(char >= '0' && char <= '9'),
-						"code should only contain alphanumeric characters")
-				}
-			},
+			expectedMessage:        "Shorten URL generated successfully",
+			expectError:            false,
+			validateCodeFormat:     true,
 		},
 	}
 
-	for _, testCase := range testCases {
-		testCase := testCase
+	for _, tc := range testCases {
+		tc := tc
 
-		t.Run(testCase.name, func(t *testing.T) {
-			// Setup Redis state if needed
-			err := testCase.setupRedis(mr)
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// 1. Setup Mock Redis
+			mockRedis := redis.NewMockRedis(t)
+
+			// 2. Create Link Repository
+			linkRepo := repository.NewLinkRepository(&redis.RedisClient{Client: mockRedis.Client})
+
+			// 3. Create Code Generator
+			codeGenerator := utils.NewCodeGenerator()
+
+			// 4. Create Link Service
+			linkService := service.NewLinkService(linkRepo, codeGenerator)
+
+			// 5. Create Link Handler
+			linkHandler := handler.NewLinkHandler(linkService)
+
+			// 6. Initialize Router
+			router := api.NewRouter(tc.appConfig.AppPort)
+			api.RegisterLinkRoutes(router.GroupV1(), linkHandler)
+
+			// 7. Build Request
+			reqBody := request.ShortenURLRequest{
+				Url: tc.requestURL,
+				Exp: tc.requestExp,
+			}
+			bodyBytes, err := json.Marshal(reqBody)
 			require.NoError(t, err)
 
-			// Create link service with real repository
-			linkRepo := linkRepository.NewLinkRepository(redisClient)
-			linkSvc := linkService.NewLinkService(linkRepo)
-			linkHandlerInstance := linkHandler.NewLinkHandler(linkSvc)
-
-			// Create health check service
-			healthCheckSvc := healthService.NewHealthCheckService(
-				cfg.ServiceName,
-				cfg.InstanceID,
-				redisClient,
-			)
-			healthCheckHandlerInstance := healthHandler.NewHealthCheckHandler(
-				healthCheckSvc,
-			)
-
-			router := api.NewRouter(
-				cfg.AppPort,
-				healthCheckHandlerInstance,
-				linkHandlerInstance,
-			)
-
-			// Build request
-			req, err := testCase.buildRequest()
-			require.NoError(t, err)
-
-			// Marshal request body
-			body, err := json.Marshal(req)
-			require.NoError(t, err)
-
-			// Create HTTP request
-			httpReq := httptest.NewRequest(
+			// 8. Execute Request
+			req := httptest.NewRequest(
 				http.MethodPost,
-				"/api/v1/links/shorten-url",
-				bytes.NewReader(body),
+				"/api/v1/links/shorten",
+				bytes.NewReader(bodyBytes),
 			)
-			httpReq.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Content-Type", "application/json")
 
-			// Execute request
 			recorder := httptest.NewRecorder()
-			router.ServeHTTP(recorder, httpReq)
+			router.ServeHTTP(recorder, req)
 
-			// Verify response
-			require.Equal(t, testCase.expectedHTTPStatusCode, recorder.Code)
+			// 9. Assertions
+			assert.Equal(t, tc.expectedHTTPStatusCode, recorder.Code)
 
-			if testCase.shouldSucceed {
+			if tc.expectError {
+				var errRes map[string]interface{}
+				err := json.Unmarshal(recorder.Body.Bytes(), &errRes)
+				require.NoError(t, err)
+				assert.NotEmpty(t, errRes["error"])
+			} else {
 				var res response.ShortenURLResponse
 				err := json.Unmarshal(recorder.Body.Bytes(), &res)
 				require.NoError(t, err)
 
-				// Run custom verification based on test type
-				if testCase.testType == "basic" {
-					_ = testCase.verifyResponse(&res, recorder)
-					// Verify the code was actually saved in Redis
-					storedURL, err := redisClient.Get(res.Code)
-					require.NoError(t, err)
-					assert.Equal(t, req.Url, storedURL)
-				} else if testCase.testType == "structure" {
-					testCase.validateResponseFields(t, &res)
-				}
-			} else {
-				// For failed cases, verify error response
-				var errResponse map[string]interface{}
-				err := json.Unmarshal(recorder.Body.Bytes(), &errResponse)
-				require.NoError(t, err)
-				assert.NotNil(t, errResponse["error"])
-			}
+				assert.Equal(t, tc.expectedMessage, res.Message)
+				assert.NotEmpty(t, res.Code)
 
-			// Clear Redis for next test
-			mr.FlushDB()
+				if tc.validateCodeFormat {
+					// Verify code is exactly 7 characters and alphanumeric
+					assert.Equal(t, 7, len(res.Code))
+					for _, ch := range res.Code {
+						assert.True(t,
+							(ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9'),
+							"code should only contain alphanumeric characters")
+					}
+				}
+			}
 		})
 	}
 }

@@ -4,8 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/huypham67/bookmark-management/internal/handler/health"
-	"github.com/huypham67/bookmark-management/internal/handler/link"
+	"github.com/huypham67/bookmark-management/internal/handler"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -17,11 +16,7 @@ type Router struct {
 }
 
 // NewRouter creates and configures a new HTTP router with all API endpoints.
-func NewRouter(
-	port string,
-	healthCheckHandler health.HealthCheck,
-	linkHandler link.Link,
-) *Router {
+func NewRouter(port string) *Router {
 	engine := gin.Default()
 
 	engine.GET(
@@ -29,20 +24,42 @@ func NewRouter(
 		ginSwagger.WrapHandler(swaggerFiles.Handler),
 	)
 
-	apiV1 := engine.Group("/api/v1")
-	{
-		apiV1.GET(
-			"/health-check",
-			healthCheckHandler.GetHealthCheck,
-		)
-
-		apiV1.POST("/links/shorten-url", linkHandler.ShortenURL)
-	}
-
 	return &Router{
 		engine: engine,
 		port:   port,
 	}
+}
+
+// GroupV1 returns a router group for API version 1 endpoints.
+func (r *Router) GroupV1() *gin.RouterGroup {
+	return r.engine.Group("/api/v1")
+}
+
+// RegisterHealthRoutes registers all health-check routes.
+func RegisterHealthRoutes(
+	routerGroup *gin.RouterGroup,
+	healthCheckHandler handler.HealthCheck,
+) {
+	routerGroup.GET(
+		"/health-check",
+		healthCheckHandler.GetHealthCheck,
+	)
+}
+
+// RegisterLinkRoutes registers all link management routes.
+func RegisterLinkRoutes(
+	routerGroup *gin.RouterGroup,
+	linkHandler handler.Link,
+) {
+	routerGroup.POST(
+		"/links/shorten",
+		linkHandler.ShortenURL,
+	)
+
+	routerGroup.GET(
+		"/links/redirect/:code",
+		linkHandler.RedirectToURL,
+	)
 }
 
 // ServeHTTP implements the http.Handler interface.

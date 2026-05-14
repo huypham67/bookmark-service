@@ -1,0 +1,32 @@
+# IDEs và OS rác
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Go build và Testing artifacts (Dựa trên image_d82d00.png)
+*.exe
+*.test
+*.out
+*.tmp
+coverage/
+coverage.html
+coverage.out
+coverage.tmp
+api.exe
+
+# Phân tích và logs
+bin/
+obj/
+vendor/
+logs/
+*.log
+
+# Git
+.git
+.gitignore
+
+# Tài liệu không cần thiết trong builder (nếu đã có docs/ cho swagger)
+README.md
+LICENSE

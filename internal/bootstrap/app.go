@@ -1,14 +1,14 @@
 package bootstrap
 
 import (
-	"github.com/huypham67/bookmark-management/infrastructure/redis"
 	"github.com/huypham67/bookmark-management/internal/api"
 	"github.com/huypham67/bookmark-management/internal/config"
-	healthHandler "github.com/huypham67/bookmark-management/internal/handler/health"
-	linkHandler "github.com/huypham67/bookmark-management/internal/handler/link"
+	"github.com/huypham67/bookmark-management/internal/handler"
 	"github.com/huypham67/bookmark-management/internal/repository"
-	healthService "github.com/huypham67/bookmark-management/internal/service/health"
-	linkService "github.com/huypham67/bookmark-management/internal/service/link"
+	"github.com/huypham67/bookmark-management/internal/service"
+	"github.com/huypham67/bookmark-management/internal/utils"
+	"github.com/huypham67/bookmark-management/pkg/logger"
+	"github.com/huypham67/bookmark-management/pkg/redis"
 )
 
 // App represents the application container holding the router.
@@ -18,50 +18,68 @@ type App struct {
 
 // NewApp initializes and returns a new application instance with all dependencies configured.
 func NewApp() (*App, error) {
+	err := logger.Init("")
+	if err != nil {
+		return nil, err
+	}
+
+	log := logger.Get()
+
 	cfg, err := config.LoadConfig()
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to load config")
 		return nil, err
 	}
 
-	redisClient, err := initRedisClient(cfg)
+	redisClient, err := initRedisClient()
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to initialize Redis client")
 		return nil, err
 	}
 
-	healthCheck := initHealthService(cfg, redisClient)
-	link := initLinkService(redisClient)
+	pinger := redis.NewPinger(redisClient.Client)
+	healthCheckHandler := initHealthService(cfg, pinger)
+	linkHandler := initLinkService(redisClient)
 
-	router := api.NewRouter(cfg.AppPort, healthCheck, link)
+	router := api.NewRouter(cfg.AppPort)
+
+	apiGroup := router.GroupV1()
+
+	api.RegisterHealthRoutes(
+		apiGroup,
+		healthCheckHandler,
+	)
+
+	api.RegisterLinkRoutes(
+		apiGroup,
+		linkHandler,
+	)
+
+	log.Info().Msg("Application initialized successfully")
 
 	return &App{
 		router: router,
 	}, nil
 }
 
-func initRedisClient(cfg *config.Config) (*redis.RedisClient, error) {
-	return redis.NewRedisClient(
-		redis.RedisConfig{
-			Host:     cfg.Host,
-			Port:     cfg.Port,
-			Password: cfg.Password,
-			Database: cfg.Database,
-		},
-	)
+func initRedisClient() (*redis.RedisClient, error) {
+	return redis.NewRedisClient("")
 }
 
-func initHealthService(cfg *config.Config, redisClient *redis.RedisClient) healthHandler.HealthCheck {
-	svc := healthService.NewHealthCheckService(
+func initHealthService(cfg *config.Config, pinger redis.Pinger) handler.HealthCheck {
+	svc := service.NewHealthCheckService(
 		cfg.ServiceName,
 		cfg.InstanceID,
-		redisClient,
+		pinger,
 	)
-	return healthHandler.NewHealthCheckHandler(svc)
+	return handler.NewHealthCheckHandler(svc)
 }
 
-func initLinkService(redisClient *redis.RedisClient) linkHandler.Link {
-	linkRepository := repository.NewLinkRepository(redisClient)
-	svc := linkService.NewLinkService(linkRepository)
-	return linkHandler.NewLinkHandler(svc)
+func initLinkService(redisClient *redis.RedisClient) handler.Link {
+	repo := repository.NewLinkRepository(redisClient)
+	codeGenerator := utils.NewCodeGenerator()
+	svc := service.NewLinkService(repo, codeGenerator)
+	return handler.NewLinkHandler(svc)
 }
 
 // Run starts the application by running the HTTP server.

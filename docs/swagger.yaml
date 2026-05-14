@@ -6,9 +6,12 @@ definitions:
   github_com_huypham67_bookmark-management_internal_dto_request.ShortenURLRequest:
     properties:
       exp:
+        minimum: 0
         type: integer
       url:
         type: string
+    required:
+    - url
     type: object
   github_com_huypham67_bookmark-management_internal_dto_response.HealthCheckResponse:
     properties:
@@ -52,7 +55,34 @@ paths:
       summary: Health Check
       tags:
       - health
-  /links/shorten-url:
+  /links/redirect/{code}:
+    get:
+      consumes:
+      - application/json
+      description: Redirect user to the original URL based on the shortened code
+      parameters:
+      - description: Shortened code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "301":
+          description: Redirect successful
+        "404":
+          description: Short link not found
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Redirect to Original URL
+      tags:
+      - links
+  /links/shorten:
     post:
       consumes:
       - application/json
@@ -68,7 +98,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Shorten URL generated successfully
           schema:
             $ref: '#/definitions/github_com_huypham67_bookmark-management_internal_dto_response.ShortenURLResponse'
         "400":

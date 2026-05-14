@@ -1,86 +1,67 @@
 package repository
 
 import (
-	"fmt"
+	"context"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/alicebob/miniredis/v2"
-	"github.com/huypham67/bookmark-management/infrastructure/redis"
+	pkgRedis "github.com/huypham67/bookmark-management/pkg/redis"
+	redisClient "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// setUpMockRedis creates a miniredis instance and returns a Redis client for testing
-func setUpMockRedis(t *testing.T) (*redis.RedisClient, func()) {
-	mr := miniredis.NewMiniRedis()
-	err := mr.Start()
-	require.NoError(t, err)
+func newTestRepository(t *testing.T) Link {
+	t.Helper()
 
-	client, err := redis.NewRedisClient(redis.RedisConfig{
-		Host:     "localhost",
-		Port:     fmt.Sprintf("%d", mr.Server().Addr().Port),
-		Password: "",
-		Database: 0,
-	})
-	require.NoError(t, err)
+	mockRedis := pkgRedis.NewMockRedis(t)
 
-	return client, func() {
-		mr.Close()
+	client := &pkgRedis.RedisClient{
+		Client: mockRedis.Client,
 	}
+
+	return NewLinkRepository(client)
 }
 
 func TestLinkRepository_SaveLink(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		name      string
-		code      string
-		url       string
-		exp       int64
-		expectErr bool
+		name string
+		code string
+		url  string
+		exp  int64
 	}{
 		{
-			name:      "should save link successfully with valid parameters",
-			code:      "abc123",
-			url:       "https://example.com",
-			exp:       3600,
-			expectErr: false,
+			name: "should save link successfully",
+			code: "abc123",
+			url:  "https://example.com",
+			exp:  3600,
 		},
 		{
-			name:      "should save link with short expiration time",
-			code:      "xyz789",
-			url:       "https://google.com",
-			exp:       60,
-			expectErr: false,
+			name: "should save link with zero expiration",
+			code: "no-exp",
+			url:  "https://github.com",
+			exp:  0,
 		},
 		{
-			name:      "should save link with zero expiration (no expiration)",
-			code:      "noexp01",
-			url:       "https://github.com",
-			exp:       0,
-			expectErr: false,
+			name: "should save link with empty url",
+			code: "empty-url",
+			url:  "",
+			exp:  3600,
 		},
 		{
-			name:      "should save link with very long URL",
-			code:      "longurl",
-			url:       "https://example.com/very/long/path?param1=value1&param2=value2&param3=value3&param4=value4",
-			exp:       7200,
-			expectErr: false,
+			name: "should save link with long url",
+			code: "long-url",
+			url:  "https://example.com/" + strings.Repeat("a", 4000),
+			exp:  7200,
 		},
 		{
-			name:      "should save link with empty code",
-			code:      "",
-			url:       "https://example.com",
-			exp:       3600,
-			expectErr: false,
-		},
-		{
-			name:      "should save link with empty URL",
-			code:      "empty01",
-			url:       "",
-			exp:       3600,
-			expectErr: false,
+			name: "should save special character url",
+			code: "special-url",
+			url:  "https://example.com?q=hello world&emoji=🔥",
+			exp:  3600,
 		},
 	}
 
@@ -90,19 +71,21 @@ func TestLinkRepository_SaveLink(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			redisClient, cleanup := setUpMockRedis(t)
-			defer cleanup()
-
-			repo := NewLinkRepository(redisClient)
+			repo := newTestRepository(t)
 
 			err := repo.SaveLink(tc.code, tc.url, tc.exp)
 
-			if tc.expectErr {
-				assert.Error(t, err)
-				return
-			}
+			require.NoError(t, err)
 
-			assert.NoError(t, err)
+			exists, err := repo.CheckExists(tc.code)
+
+			require.NoError(t, err)
+			assert.True(t, exists)
+
+			value, err := repo.GetLink(tc.code)
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.url, value)
 		})
 	}
 }
@@ -112,48 +95,54 @@ func TestLinkRepository_CheckExists(t *testing.T) {
 
 	testCases := []struct {
 		name         string
-		setupData    func(*redis.RedisClient)
+		setupData    func(t *testing.T, repo Link, mockRedis *pkgRedis.MockRedis)
 		code         string
 		expectExists bool
-		expectErr    bool
+		expectError  bool
+		useMockRedis bool
 	}{
 		{
 			name: "should return true when code exists",
-			setupData: func(client *redis.RedisClient) {
-				err := client.Set("abc123", "https://example.com", 3600*time.Second)
+			setupData: func(t *testing.T, repo Link, mockRedis *pkgRedis.MockRedis) {
+				err := repo.SaveLink(
+					"abc123",
+					"https://example.com",
+					3600,
+				)
+
 				require.NoError(t, err)
 			},
 			code:         "abc123",
 			expectExists: true,
-			expectErr:    false,
+			expectError:  false,
+			useMockRedis: false,
 		},
 		{
 			name:         "should return false when code does not exist",
-			setupData:    func(client *redis.RedisClient) {},
-			code:         "nonexistent",
+			setupData:    func(t *testing.T, repo Link, mockRedis *pkgRedis.MockRedis) {},
+			code:         "not-found",
 			expectExists: false,
-			expectErr:    false,
+			expectError:  false,
+			useMockRedis: false,
 		},
 		{
-			name: "should return true when multiple codes exist and checking middle one",
-			setupData: func(client *redis.RedisClient) {
-				err := client.Set("code1", "https://example1.com", 3600*time.Second)
-				require.NoError(t, err)
-				err = client.Set("code2", "https://example2.com", 3600*time.Second)
-				require.NoError(t, err)
-				err = client.Set("code3", "https://example3.com", 3600*time.Second)
-				require.NoError(t, err)
-			},
-			code:         "code2",
-			expectExists: true,
-			expectErr:    false,
-		},
-		{
-			name:         "should return false when checking empty code",
-			setupData:    func(client *redis.RedisClient) {},
+			name:         "should return false with empty code",
+			setupData:    func(t *testing.T, repo Link, mockRedis *pkgRedis.MockRedis) {},
 			code:         "",
 			expectExists: false,
-			expectErr:    false,
+			expectError:  false,
+			useMockRedis: false,
+		},
+		{
+			name: "should return error when Redis connection fails",
+			setupData: func(t *testing.T, repo Link, mockRedis *pkgRedis.MockRedis) {
+				// Close Redis server to simulate connection error
+				mockRedis.Server.Close()
+			},
+			code:         "test-code",
+			expectExists: false,
+			expectError:  true,
+			useMockRedis: true,
 		},
 	}
 
@@ -163,14 +152,80 @@ func TestLinkRepository_CheckExists(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			redisClient, cleanup := setUpMockRedis(t)
-			defer cleanup()
+			var repo Link
+			var mockRedis *pkgRedis.MockRedis
 
-			tc.setupData(redisClient)
+			if tc.useMockRedis {
+				mockRedis = pkgRedis.NewMockRedis(t)
+				client := &pkgRedis.RedisClient{
+					Client: mockRedis.Client,
+				}
+				repo = NewLinkRepository(client)
+			} else {
+				repo = newTestRepository(t)
+				mockRedis = pkgRedis.NewMockRedis(t)
+			}
 
-			repo := NewLinkRepository(redisClient)
+			tc.setupData(t, repo, mockRedis)
 
 			exists, err := repo.CheckExists(tc.code)
+
+			if tc.expectError {
+				assert.Error(t, err)
+				assert.False(t, exists)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectExists, exists)
+			}
+		})
+	}
+}
+
+func TestLinkRepository_GetLink(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name      string
+		setupData func(t *testing.T, repo Link)
+		code      string
+		expected  string
+		expectErr bool
+	}{
+		{
+			name: "should get existing link",
+			setupData: func(t *testing.T, repo Link) {
+				err := repo.SaveLink(
+					"abc123",
+					"https://example.com",
+					3600,
+				)
+
+				require.NoError(t, err)
+			},
+			code:      "abc123",
+			expected:  "https://example.com",
+			expectErr: false,
+		},
+		{
+			name:      "should return error when code not found",
+			setupData: func(t *testing.T, repo Link) {},
+			code:      "not-found",
+			expected:  "",
+			expectErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			repo := newTestRepository(t)
+
+			tc.setupData(t, repo)
+
+			url, err := repo.GetLink(tc.code)
 
 			if tc.expectErr {
 				assert.Error(t, err)
@@ -178,92 +233,149 @@ func TestLinkRepository_CheckExists(t *testing.T) {
 			}
 
 			assert.NoError(t, err)
-			assert.Equal(t, tc.expectExists, exists)
+			assert.Equal(t, tc.expected, url)
 		})
 	}
 }
 
-func TestLinkRepository_SaveAndCheckExists(t *testing.T) {
+func TestLinkRepository_SaveAndGetLink(t *testing.T) {
 	t.Parallel()
 
-	testCases := []struct {
-		name      string
-		code      string
-		url       string
-		exp       int64
-		expectErr bool
-	}{
-		{
-			name:      "should save link and verify it exists",
-			code:      "verify01",
-			url:       "https://example.com",
-			exp:       3600,
-			expectErr: false,
-		},
-		{
-			name:      "should save multiple links and verify they exist",
-			code:      "multi01",
-			url:       "https://example.com/path1",
-			exp:       7200,
-			expectErr: false,
-		},
-		{
-			name:      "should save link with special characters in URL",
-			code:      "special",
-			url:       "https://example.com?q=test&sort=asc#section",
-			exp:       3600,
-			expectErr: false,
-		},
+	repo := newTestRepository(t)
+
+	code := "integration-test"
+	expectedURL := "https://example.com"
+
+	err := repo.SaveLink(code, expectedURL, 3600)
+	require.NoError(t, err)
+
+	url, err := repo.GetLink(code)
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedURL, url)
+}
+
+func TestLinkRepository_LinkExpiration(t *testing.T) {
+	t.Parallel()
+
+	mockRedis := pkgRedis.NewMockRedis(t)
+
+	client := &pkgRedis.RedisClient{
+		Client: mockRedis.Client,
 	}
 
-	for _, tc := range testCases {
-		tc := tc
+	repo := NewLinkRepository(client)
 
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+	code := "exp-test"
 
-			redisClient, cleanup := setUpMockRedis(t)
-			defer cleanup()
+	err := repo.SaveLink(
+		code,
+		"https://example.com",
+		1,
+	)
 
-			repo := NewLinkRepository(redisClient)
+	require.NoError(t, err)
 
-			// Save the link
-			err := repo.SaveLink(tc.code, tc.url, tc.exp)
-			assert.NoError(t, err)
+	exists, err := repo.CheckExists(code)
 
-			// Verify it exists
-			exists, err := repo.CheckExists(tc.code)
-			assert.NoError(t, err)
-			assert.True(t, exists, "saved link should exist")
-		})
-	}
+	require.NoError(t, err)
+	assert.True(t, exists)
+
+	mockRedis.Server.FastForward(2 * time.Second)
+
+	exists, err = repo.CheckExists(code)
+
+	require.NoError(t, err)
+	assert.False(t, exists)
 }
 
 func TestLinkRepository_OverwriteExistingLink(t *testing.T) {
 	t.Parallel()
 
-	redisClient, cleanup := setUpMockRedis(t)
-	defer cleanup()
+	repo := newTestRepository(t)
 
-	repo := NewLinkRepository(redisClient)
+	code := "overwrite"
 
-	code := "overwrite01"
-	firstURL := "https://example.com/api/v1"
-	secondURL := "https://example.com/api/v2"
+	err := repo.SaveLink(
+		code,
+		"https://example.com/v1",
+		3600,
+	)
 
-	// Save first link
-	err := repo.SaveLink(code, firstURL, 3600)
+	require.NoError(t, err)
+
+	err = repo.SaveLink(
+		code,
+		"https://example.com/v2",
+		3600,
+	)
+
+	require.NoError(t, err)
+
+	url, err := repo.GetLink(code)
+
 	assert.NoError(t, err)
+	assert.Equal(t, "https://example.com/v2", url)
+}
 
-	exists, err := repo.CheckExists(code)
-	assert.NoError(t, err)
-	assert.True(t, exists)
+func TestLinkRepository_RedisFailure(t *testing.T) {
+	t.Parallel()
 
-	// Overwrite with second link
-	err = repo.SaveLink(code, secondURL, 3600)
-	assert.NoError(t, err)
+	mockRedis := pkgRedis.NewMockRedis(t)
 
-	exists, err = repo.CheckExists(code)
+	client := &pkgRedis.RedisClient{
+		Client: mockRedis.Client,
+	}
+
+	repo := NewLinkRepository(client)
+
+	mockRedis.Server.Close()
+
+	err := repo.SaveLink(
+		"abc",
+		"https://example.com",
+		3600,
+	)
+
+	assert.Error(t, err)
+}
+
+func TestLinkRepository_RawRedisValidation(t *testing.T) {
+	t.Parallel()
+
+	mockRedis := pkgRedis.NewMockRedis(t)
+
+	client := &pkgRedis.RedisClient{
+		Client: mockRedis.Client,
+	}
+
+	repo := NewLinkRepository(client)
+
+	code := "raw-check"
+	expectedURL := "https://example.com"
+
+	err := repo.SaveLink(code, expectedURL, 3600)
+
+	require.NoError(t, err)
+
+	rawURL, err := client.Client.Get(
+		context.Background(),
+		code,
+	).Result()
+
 	assert.NoError(t, err)
-	assert.True(t, exists, "overwritten link should still exist")
+	assert.Equal(t, expectedURL, rawURL)
+}
+
+func TestLinkRepository_WithRealRedisCommand(t *testing.T) {
+	t.Parallel()
+
+	mockRedis := pkgRedis.NewMockRedis(t)
+
+	redisCmd := mockRedis.Client.Ping(context.Background())
+
+	assert.Equal(t, "PONG", redisCmd.Val())
+	assert.NoError(t, redisCmd.Err())
+
+	_ = redisClient.Nil
 }
