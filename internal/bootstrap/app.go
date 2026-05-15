@@ -8,9 +8,9 @@ import (
 	"github.com/huypham67/bookmark-management/internal/handler"
 	"github.com/huypham67/bookmark-management/internal/repository"
 	"github.com/huypham67/bookmark-management/internal/service"
-	"github.com/huypham67/bookmark-management/internal/utils"
 	"github.com/huypham67/bookmark-management/pkg/logger"
 	"github.com/huypham67/bookmark-management/pkg/redis"
+	"github.com/huypham67/bookmark-management/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
 
@@ -59,31 +59,16 @@ func NewApp() (*App, error) {
 	}, nil
 }
 
-func registerRoutes(
-	router *api.Router,
-	cfg *config.Config,
-	redisClient *redis.RedisClient,
-) {
+func registerRoutes(router *api.Router, cfg *config.Config, redisClient *redis.RedisClient) {
 	apiGroup := router.GroupV1()
 
-	healthHandler := initHealthHandler(
-		cfg,
-		redisClient,
-	)
+	healthHandler := initHealthHandler(cfg, redisClient)
 
-	linkHandler := initLinkHandler(
-		redisClient,
-	)
+	linkHandler := initLinkHandler(redisClient)
 
-	api.RegisterHealthRoutes(
-		apiGroup,
-		healthHandler,
-	)
+	api.RegisterHealthRoutes(apiGroup, healthHandler)
 
-	api.RegisterLinkRoutes(
-		apiGroup,
-		linkHandler,
-	)
+	api.RegisterLinkRoutes(apiGroup, linkHandler)
 }
 
 func initRedisClient() (*redis.RedisClient, error) {
@@ -93,11 +78,7 @@ func initRedisClient() (*redis.RedisClient, error) {
 func initHealthHandler(cfg *config.Config, redisClient *redis.RedisClient) handler.HealthCheck {
 	pinger := redis.NewPinger(redisClient.Client)
 
-	healthService := service.NewHealthCheckService(
-		cfg.ServiceName,
-		cfg.InstanceID,
-		pinger,
-	)
+	healthService := service.NewHealthCheckService(cfg.ServiceName, cfg.InstanceID, pinger)
 
 	return handler.NewHealthCheckHandler(healthService)
 }

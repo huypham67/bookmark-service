@@ -7,7 +7,7 @@ import (
 
 	"github.com/huypham67/bookmark-management/internal/dto/request"
 	repoMocks "github.com/huypham67/bookmark-management/internal/repository/mocks"
-	utilsMocks "github.com/huypham67/bookmark-management/internal/utils/mocks"
+	utilsMocks "github.com/huypham67/bookmark-management/pkg/utils/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

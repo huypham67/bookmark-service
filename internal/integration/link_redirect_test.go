@@ -5,12 +5,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/huypham67/bookmark-management/internal/api"
-	"github.com/huypham67/bookmark-management/internal/handler"
-	"github.com/huypham67/bookmark-management/internal/repository"
-	"github.com/huypham67/bookmark-management/internal/service"
-	"github.com/huypham67/bookmark-management/internal/utils"
-	"github.com/huypham67/bookmark-management/pkg/redis"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,15 +21,15 @@ func TestRedirectToURLEndpoint(t *testing.T) {
 		name        string
 		code        string
 		originalURL string
-		setupRedis  func(*redis.MockRedis)
+		setupRedis  func(*TestApp)
 		expected    expected
 	}{
 		{
 			name:        "should redirect successfully when code exists",
 			code:        "abc1234",
 			originalURL: "https://www.google.com",
-			setupRedis: func(mockRedis *redis.MockRedis) {
-				mockRedis.Server.Set("abc1234", "https://www.google.com")
+			setupRedis: func(app *TestApp) {
+				app.MockRedis.Server.Set("abc1234", "https://www.google.com")
 			},
 			expected: expected{
 				statusCode: http.StatusFound,
@@ -46,7 +40,7 @@ func TestRedirectToURLEndpoint(t *testing.T) {
 			name:        "should return 404 when code does not exist",
 			code:        "missing",
 			originalURL: "",
-			setupRedis: func(mockRedis *redis.MockRedis) {
+			setupRedis: func(app *TestApp) {
 				// No setup needed since the code does not exist
 			},
 			expected: expected{
@@ -58,8 +52,8 @@ func TestRedirectToURLEndpoint(t *testing.T) {
 			name:        "should return 404 when redis connection fails",
 			code:        "abc1234",
 			originalURL: "https://www.google.com",
-			setupRedis: func(mockRedis *redis.MockRedis) {
-				mockRedis.Close()
+			setupRedis: func(app *TestApp) {
+				app.MockRedis.Close()
 			},
 			expected: expected{
 				statusCode:   http.StatusNotFound,
@@ -73,31 +67,9 @@ func TestRedirectToURLEndpoint(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockRedis := redis.NewMockRedis(t)
+			app := setupLinkTestApp(t)
 
-			tc.setupRedis(mockRedis)
-
-			linkRepository := repository.NewLinkRepository(
-				&redis.RedisClient{
-					Client: mockRedis.Client,
-				},
-			)
-
-			linkService := service.NewLinkService(
-				linkRepository,
-				utils.NewCodeGenerator(),
-			)
-
-			linkHandler := handler.NewLinkHandler(
-				linkService,
-			)
-
-			router := api.NewRouter()
-
-			api.RegisterLinkRoutes(
-				router.GroupV1(),
-				linkHandler,
-			)
+			tc.setupRedis(app)
 
 			httpRequest := httptest.NewRequest(
 				http.MethodGet,
@@ -107,7 +79,7 @@ func TestRedirectToURLEndpoint(t *testing.T) {
 
 			httpRecorder := httptest.NewRecorder()
 
-			router.ServeHTTP(httpRecorder, httpRequest)
+			app.Router.ServeHTTP(httpRecorder, httpRequest)
 
 			assert.Equal(
 				t,

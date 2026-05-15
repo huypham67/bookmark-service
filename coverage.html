@@ -61,13 +61,13 @@
 				
 				<option value="file2">github.com/huypham67/bookmark-management/internal/handler/link_handler.go (100.0%)</option>
 				
-				<option value="file3">github.com/huypham67/bookmark-management/internal/repository/link_repository.go (100.0%)</option>
+				<option value="file3">github.com/huypham67/bookmark-management/internal/integration/test_helper.go (100.0%)</option>
 				
-				<option value="file4">github.com/huypham67/bookmark-management/internal/service/health_service.go (100.0%)</option>
+				<option value="file4">github.com/huypham67/bookmark-management/internal/repository/link_repository.go (100.0%)</option>
 				
-				<option value="file5">github.com/huypham67/bookmark-management/internal/service/link_service.go (100.0%)</option>
+				<option value="file5">github.com/huypham67/bookmark-management/internal/service/health_service.go (100.0%)</option>
 				
-				<option value="file6">github.com/huypham67/bookmark-management/internal/utils/code_generator.go (87.5%)</option>
+				<option value="file6">github.com/huypham67/bookmark-management/internal/service/link_service.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -104,11 +104,10 @@ import (
 // Router wraps the Gin engine and application server configuration.
 type Router struct {
         engine *gin.Engine
-        port   string
 }
 
 // NewRouter creates and configures a new HTTP router with all API endpoints.
-func NewRouter(port string) *Router <span class="cov10" title="9">{
+func NewRouter() *Router <span class="cov10" title="9">{
         engine := gin.Default()
 
         engine.GET(
@@ -118,7 +117,6 @@ func NewRouter(port string) *Router <span class="cov10" title="9">{
 
         return &amp;Router{
                 engine: engine,
-                port:   port,
         }
 }</span>
 
@@ -162,9 +160,9 @@ func (r *Router) ServeHTTP(
         r.engine.ServeHTTP(writer, request)
 }</span>
 
-// Run starts the HTTP server on the configured port.
-func (r *Router) Run() error <span class="cov0" title="0">{
-        return r.engine.Run(":" + r.port)
+// Engine exposes underlying Gin engine
+func (r *Router) Engine() *gin.Engine <span class="cov0" title="0">{
+        return r.engine
 }</span>
 </pre>
 		
@@ -332,7 +330,84 @@ func (h *linkHandler) RedirectToURL(c *gin.Context) <span class="cov6" title="5"
 }
 </pre>
 		
-		<pre class="file" id="file3" style="display: none">package repository
+		<pre class="file" id="file3" style="display: none">package integration
+
+import (
+        "testing"
+
+        "github.com/huypham67/bookmark-management/internal/api"
+        "github.com/huypham67/bookmark-management/internal/handler"
+        "github.com/huypham67/bookmark-management/internal/repository"
+        "github.com/huypham67/bookmark-management/internal/service"
+        "github.com/huypham67/bookmark-management/pkg/redis"
+        "github.com/huypham67/bookmark-management/pkg/utils"
+)
+
+// TestApp represents the test application with its dependencies.
+type TestApp struct {
+        Router    *api.Router
+        MockRedis *redis.MockRedis
+}
+
+func setupHealthCheckTestApp(t *testing.T, serviceName string, instanceID string) *TestApp <span class="cov4" title="2">{
+        t.Helper()
+
+        mockRedis := redis.NewMockRedis(t)
+
+        pinger := redis.NewPinger(mockRedis.Client)
+
+        healthService := service.NewHealthCheckService(serviceName, instanceID, pinger)
+
+        healthHandler := handler.NewHealthCheckHandler(healthService)
+
+        router := api.NewRouter()
+
+        api.RegisterHealthRoutes(
+                router.GroupV1(),
+                healthHandler,
+        )
+
+        return &amp;TestApp{
+                Router:    router,
+                MockRedis: mockRedis,
+        }
+}</span>
+
+func setupLinkTestApp(t *testing.T) *TestApp <span class="cov10" title="7">{
+        t.Helper()
+
+        mockRedis := redis.NewMockRedis(t)
+
+        linkRepository := repository.NewLinkRepository(
+                &amp;redis.RedisClient{
+                        Client: mockRedis.Client,
+                },
+        )
+
+        linkService := service.NewLinkService(
+                linkRepository,
+                utils.NewCodeGenerator(),
+        )
+
+        linkHandler := handler.NewLinkHandler(
+                linkService,
+        )
+
+        router := api.NewRouter()
+
+        api.RegisterLinkRoutes(
+                router.GroupV1(),
+                linkHandler,
+        )
+
+        return &amp;TestApp{
+                Router:    router,
+                MockRedis: mockRedis,
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package repository
 
 import (
         "context"
@@ -383,7 +458,7 @@ func (r *linkRepository) GetLink(ctx context.Context, code string) (string, erro
 }
 </pre>
 		
-		<pre class="file" id="file4" style="display: none">package service
+		<pre class="file" id="file5" style="display: none">package service
 
 import (
         "github.com/huypham67/bookmark-management/internal/dto/response"
@@ -414,7 +489,7 @@ func NewHealthCheckService(serviceName string, instanceID string, pinger redis.P
         }
 }</span>
 
-// GetStatus returns the current application health status with service name, instance ID, and Redis connection status.
+// GetStatus checks the health status of the application by pinging Redis and returns a HealthCheckResponse.
 func (s *healthCheckService) GetStatus() response.HealthCheckResponse <span class="cov10" title="4">{
         if err := s.pinger.Ping(); err != nil </span><span class="cov5" title="2">{
                 log.Error().
@@ -437,14 +512,14 @@ func (s *healthCheckService) GetStatus() response.HealthCheckResponse <span clas
 }
 </pre>
 		
-		<pre class="file" id="file5" style="display: none">package service
+		<pre class="file" id="file6" style="display: none">package service
 
 import (
         "context"
 
         "github.com/huypham67/bookmark-management/internal/dto/request"
         "github.com/huypham67/bookmark-management/internal/repository"
-        "github.com/huypham67/bookmark-management/internal/utils"
+        "github.com/huypham67/bookmark-management/pkg/utils"
         "github.com/rs/zerolog/log"
 )
 
@@ -469,7 +544,7 @@ func NewLinkService(linkRepo repository.Link, codeGenerator utils.CodeGenerator)
 
 const shortCodeLength = 7
 
-// ShortenURL generates a unique short code for the provided URL and saves the mapping to Redis with an expiration time.
+// ShortenURL generates a unique short code for the provided URL and saves the mapping to Redis.
 func (link *linkService) ShortenURL(ctx context.Context, request request.ShortenURLRequest) (string, error) <span class="cov8" title="8">{
         code, err := link.codeGenerator.Generate(shortCodeLength)
 
@@ -519,48 +594,6 @@ func (link *linkService) GetOriginalURL(ctx context.Context, code string) (strin
         }</span>
 
         <span class="cov3" title="2">return url, nil</span>
-}
-</pre>
-		
-		<pre class="file" id="file6" style="display: none">package utils
-
-import (
-        "crypto/rand"
-        "math/big"
-)
-
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-// CodeGenerator defines the contract for generating random codes.
-type CodeGenerator interface {
-        Generate(length int) (string, error)
-}
-
-type codeGenerator struct{}
-
-// NewCodeGenerator creates a new code generator instance.
-func NewCodeGenerator() CodeGenerator <span class="cov7" title="7">{
-        return &amp;codeGenerator{}
-}</span>
-
-// Generate creates a random string of the specified length using characters from the defined charset.
-func (cg *codeGenerator) Generate(length int) (string, error) <span class="cov3" title="2">{
-        result := make([]byte, length)
-
-        for i := range result </span><span class="cov10" title="14">{
-                randomIndex, err := rand.Int(
-                        rand.Reader,
-                        big.NewInt(int64(len(charset))),
-                )
-
-                if err != nil </span><span class="cov0" title="0">{
-                        return "", err
-                }</span>
-
-                <span class="cov10" title="14">result[i] = charset[randomIndex.Int64()]</span>
-        }
-
-        <span class="cov3" title="2">return string(result), nil</span>
 }
 </pre>
 		

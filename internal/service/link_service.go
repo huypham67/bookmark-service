@@ -5,7 +5,7 @@ import (
 
 	"github.com/huypham67/bookmark-management/internal/dto/request"
 	"github.com/huypham67/bookmark-management/internal/repository"
-	"github.com/huypham67/bookmark-management/internal/utils"
+	"github.com/huypham67/bookmark-management/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
 

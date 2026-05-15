@@ -6,12 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/huypham67/bookmark-management/internal/api"
 	"github.com/huypham67/bookmark-management/internal/config"
 	"github.com/huypham67/bookmark-management/internal/dto/response"
-	"github.com/huypham67/bookmark-management/internal/handler"
-	"github.com/huypham67/bookmark-management/internal/service"
-	"github.com/huypham67/bookmark-management/pkg/redis"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,17 +23,16 @@ func TestHealthCheckEndpoint(t *testing.T) {
 	testCases := []struct {
 		name       string
 		appConfig  config.Config
-		setupRedis func(*redis.MockRedis)
+		setupRedis func(*TestApp)
 		expected   expected
 	}{
 		{
 			name: "should return 200 OK with successful health check",
 			appConfig: config.Config{
-				AppPort:     "8080",
 				ServiceName: "bookmark-service",
 				InstanceID:  "instance-1",
 			},
-			setupRedis: func(mockRedis *redis.MockRedis) {
+			setupRedis: func(app *TestApp) {
 			},
 			expected: expected{
 				statusCode: http.StatusOK,
@@ -51,12 +46,11 @@ func TestHealthCheckEndpoint(t *testing.T) {
 		{
 			name: "should return 500 when redis connection fails",
 			appConfig: config.Config{
-				AppPort:     "8080",
 				ServiceName: "bookmark-service",
 				InstanceID:  "instance-2",
 			},
-			setupRedis: func(mockRedis *redis.MockRedis) {
-				mockRedis.Close()
+			setupRedis: func(app *TestApp) {
+				app.MockRedis.Close()
 			},
 			expected: expected{
 				statusCode: http.StatusInternalServerError,
@@ -75,18 +69,13 @@ func TestHealthCheckEndpoint(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockRedis := redis.NewMockRedis(t)
-			tc.setupRedis(mockRedis)
-			pinger := redis.NewPinger(mockRedis.Client)
-			healthCheckService := service.NewHealthCheckService(tc.appConfig.ServiceName, tc.appConfig.InstanceID, pinger)
-			healthCheckHandler := handler.NewHealthCheckHandler(healthCheckService)
+			app := setupHealthCheckTestApp(t, tc.appConfig.ServiceName, tc.appConfig.InstanceID)
 
-			router := api.NewRouter()
-			api.RegisterHealthRoutes(router.GroupV1(), healthCheckHandler)
+			tc.setupRedis(app)
 
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/health-check", nil)
 			recorder := httptest.NewRecorder()
-			router.ServeHTTP(recorder, req)
+			app.Router.ServeHTTP(recorder, req)
 
 			assert.Equal(t, tc.expected.statusCode, recorder.Code)
 			assert.Equal(t, "application/json; charset=utf-8", recorder.Header().Get("Content-Type"))
