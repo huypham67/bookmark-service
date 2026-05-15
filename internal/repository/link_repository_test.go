@@ -112,3 +112,95 @@ func TestLinkRepository_SaveLink(t *testing.T) {
 		})
 	}
 }
+
+func TestLinkRepository_CheckExists(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	type args struct {
+		code string
+	}
+
+	testCases := []struct {
+		name          string
+		setupDataFunc func(context.Context, Link)
+		args          args
+		verify        func(*testing.T, bool, error)
+	}{
+		{
+			name: "should return true if code exists",
+			setupDataFunc: func(_ context.Context, repo Link) {
+				err := repo.SaveLink(ctx, "abc1234", "https://www.google.com", 1234)
+				require.NoError(t, err)
+			},
+			args: args{
+				code: "abc1234",
+			},
+			verify: func(t *testing.T, exists bool, err error) {
+				require.NoError(t, err)
+				assert.True(t, exists)
+			},
+		},
+		{
+			name: "should return false if code does not exist",
+			setupDataFunc: func(_ context.Context, repo Link) {
+			},
+			args: args{
+				code: "missing",
+			},
+			verify: func(t *testing.T, exists bool, err error) {
+				require.NoError(t, err)
+				assert.False(t, exists)
+			},
+		}, {
+			name: "should return false if key expired",
+			setupDataFunc: func(_ context.Context, repo Link) {
+				err := repo.SaveLink(ctx, "abc1234", "https://www.google.com", 1)
+				require.NoError(t, err)
+				time.Sleep(2 * time.Second)
+			},
+			args: args{
+				code: "def5678",
+			},
+			verify: func(t *testing.T, exists bool, err error) {
+				require.NoError(t, err)
+				assert.False(t, exists)
+			},
+		}, {
+			name: "should return error if Redis client is unavailable",
+			setupDataFunc: func(_ context.Context, repo Link) {
+				err := repo.SaveLink(ctx, "abc1234", "https://www.google.com", 1234)
+				require.NoError(t, err)
+			},
+			args: args{
+				code: "abc1234",
+			},
+			verify: func(t *testing.T, exists bool, err error) {
+				assert.Error(t, err)
+				assert.False(t, exists)
+				assert.Contains(t, err.Error(), "redis: client is closed")
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			repo, mockRedis := newTestRepository(t)
+
+			tc.setupDataFunc(ctx, repo)
+
+			if tc.name == "should return error if Redis client is unavailable" {
+				mockRedis.Close()
+			}
+
+			exists, err := repo.CheckExists(ctx, tc.args.code)
+
+			tc.verify(t, exists, err)
+		})
+	}
+}

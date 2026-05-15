@@ -41,3 +41,14 @@ func NewMockRedis(t *testing.T) *MockRedis {
 func (m *MockRedis) FastForward(duration time.Duration) {
 	m.Server.FastForward(duration)
 }
+
+// Close shuts down the mock Redis server and closes the client connection.
+func (m *MockRedis) Close() {
+	m.Client.Close()
+	m.Server.Close()
+}
+
+// GetClient returns wrapped redis client that maps connection errors to ErrMockRedisClosed
+func (m *MockRedis) GetClient() *redis.Client {
+	return m.Client
+}
