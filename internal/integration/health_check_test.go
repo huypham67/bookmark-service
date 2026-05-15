@@ -19,52 +19,53 @@ import (
 func TestHealthCheckEndpoint(t *testing.T) {
 	t.Parallel()
 
+	type expected struct {
+		statusCode int
+		response   response.HealthCheckResponse
+	}
+
 	testCases := []struct {
-		name                   string
-		appConfig              config.Config
-		expectedHTTPStatusCode int
-		expectedMessage        string
-		expectedServiceName    string
-		expectedInstanceID     string
-		expectGeneratedUUID    bool
+		name       string
+		appConfig  config.Config
+		setupRedis func(*redis.MockRedis)
+		expected   expected
 	}{
 		{
-			name: "should return configured instance id",
+			name: "should return 200 OK with successful health check",
 			appConfig: config.Config{
 				AppPort:     "8080",
 				ServiceName: "bookmark-service",
 				InstanceID:  "instance-1",
 			},
-			expectedHTTPStatusCode: http.StatusOK,
-			expectedMessage:        "OK",
-			expectedServiceName:    "bookmark-service",
-			expectedInstanceID:     "instance-1",
-			expectGeneratedUUID:    false,
+			setupRedis: func(mockRedis *redis.MockRedis) {
+			},
+			expected: expected{
+				statusCode: http.StatusOK,
+				response: response.HealthCheckResponse{
+					Message:     "OK",
+					ServiceName: "bookmark-service",
+					InstanceID:  "instance-1",
+				},
+			},
 		},
 		{
-			name: "should return generated uuid instance id",
+			name: "should return 500 when redis connection fails",
 			appConfig: config.Config{
 				AppPort:     "8080",
 				ServiceName: "bookmark-service",
-				InstanceID:  "", // Empty to trigger UUID generation
+				InstanceID:  "instance-2",
 			},
-			expectedHTTPStatusCode: http.StatusOK,
-			expectedMessage:        "OK",
-			expectedServiceName:    "bookmark-service",
-			expectGeneratedUUID:    true,
-		},
-		{
-			name: "should handle different service names",
-			appConfig: config.Config{
-				AppPort:     "8081",
-				ServiceName: "auth-service",
-				InstanceID:  "prod-1",
+			setupRedis: func(mockRedis *redis.MockRedis) {
+				mockRedis.Close()
 			},
-			expectedHTTPStatusCode: http.StatusOK,
-			expectedMessage:        "OK",
-			expectedServiceName:    "auth-service",
-			expectedInstanceID:     "prod-1",
-			expectGeneratedUUID:    false,
+			expected: expected{
+				statusCode: http.StatusInternalServerError,
+				response: response.HealthCheckResponse{
+					Message:     "FAILED",
+					ServiceName: "bookmark-service",
+					InstanceID:  "instance-2",
+				},
+			},
 		},
 	}
 
@@ -75,55 +76,26 @@ func TestHealthCheckEndpoint(t *testing.T) {
 			t.Parallel()
 
 			mockRedis := redis.NewMockRedis(t)
+			tc.setupRedis(mockRedis)
 			pinger := redis.NewPinger(mockRedis.Client)
+			healthCheckService := service.NewHealthCheckService(tc.appConfig.ServiceName, tc.appConfig.InstanceID, pinger)
+			healthCheckHandler := handler.NewHealthCheckHandler(healthCheckService)
 
-			cfg := tc.appConfig
-			if cfg.InstanceID == "" {
-				// Simulate UUID generation (same logic as LoadConfig in production)
-				// For testing, we'll generate it through the service if needed
-				// But configuration should have it set in tests
-				cfg.InstanceID = "test-generated-uuid"
-			}
-
-			healthCheckService := service.NewHealthCheckService(
-				cfg.ServiceName,
-				cfg.InstanceID,
-				pinger,
-			)
-
-			healthCheckHandler := handler.NewHealthCheckHandler(
-				healthCheckService,
-			)
-
-			router := api.NewRouter(cfg.AppPort)
+			router := api.NewRouter()
 			api.RegisterHealthRoutes(router.GroupV1(), healthCheckHandler)
 
-			// 8. Execute Request
-			req := httptest.NewRequest(
-				http.MethodGet,
-				"/api/v1/health-check",
-				nil,
-			)
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/health-check", nil)
 			recorder := httptest.NewRecorder()
 			router.ServeHTTP(recorder, req)
 
-			// 9. Assertions
-			assert.Equal(t, tc.expectedHTTPStatusCode, recorder.Code)
+			assert.Equal(t, tc.expected.statusCode, recorder.Code)
+			assert.Equal(t, "application/json; charset=utf-8", recorder.Header().Get("Content-Type"))
 
-			var res response.HealthCheckResponse
-			err := json.Unmarshal(recorder.Body.Bytes(), &res)
+			var actual response.HealthCheckResponse
+			err := json.Unmarshal(recorder.Body.Bytes(), &actual)
 			require.NoError(t, err)
 
-			assert.Equal(t, tc.expectedMessage, res.Message)
-			assert.Equal(t, tc.expectedServiceName, res.ServiceName)
-
-			if tc.expectGeneratedUUID {
-				assert.NotEmpty(t, res.InstanceID)
-				// Verify it looks like our test-generated UUID
-				assert.Equal(t, "test-generated-uuid", res.InstanceID)
-			} else {
-				assert.Equal(t, tc.expectedInstanceID, res.InstanceID)
-			}
+			assert.Equal(t, tc.expected.response, actual)
 		})
 	}
 }

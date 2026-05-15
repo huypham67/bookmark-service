@@ -30,7 +30,7 @@ func NewLinkService(linkRepo repository.Link, codeGenerator utils.CodeGenerator)
 
 const shortCodeLength = 7
 
-// ShortenURL generates a unique short code for the provided URL and saves the mapping to Redis with an expiration time.
+// ShortenURL generates a unique short code for the provided URL and saves the mapping to Redis.
 func (link *linkService) ShortenURL(ctx context.Context, request request.ShortenURLRequest) (string, error) {
 	code, err := link.codeGenerator.Generate(shortCodeLength)
 

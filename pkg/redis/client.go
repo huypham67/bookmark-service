@@ -13,8 +13,7 @@ type RedisClient struct {
 	Client *redis.Client
 }
 
-// NewRedisClient initializes a new Redis client with configuration loaded from environment variables
-// using the provided envPrefix and tests the connection.
+// NewRedisClient initializes and returns a new RedisClient based on environment variables with the specified prefix.
 func NewRedisClient(envPrefix string) (*RedisClient, error) {
 	config, err := LoadRedisConfig(envPrefix)
 	if err != nil {

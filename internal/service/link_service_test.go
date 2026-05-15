@@ -15,9 +15,13 @@ import (
 func TestLinkService_ShortenURL(t *testing.T) {
 	t.Parallel()
 
+	type args struct {
+		request request.ShortenURLRequest
+	}
+
 	testCases := []struct {
 		name       string
-		args       request.ShortenURLRequest
+		args       args
 		setupMocks func(
 			*repoMocks.Link,
 			*utilsMocks.CodeGenerator,
@@ -26,9 +30,11 @@ func TestLinkService_ShortenURL(t *testing.T) {
 	}{
 		{
 			name: "should shorten URL successfully when code does not exist",
-			args: request.ShortenURLRequest{
-				Url: "https://google.com",
-				Exp: 3600,
+			args: args{
+				request: request.ShortenURLRequest{
+					Url: "https://google.com",
+					Exp: 3600,
+				},
 			},
 			setupMocks: func(mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
 				mockCodeGen.
@@ -59,9 +65,11 @@ func TestLinkService_ShortenURL(t *testing.T) {
 		},
 		{
 			name: "should return error when code generation fails",
-			args: request.ShortenURLRequest{
-				Url: "https://google.com",
-				Exp: 3600,
+			args: args{
+				request: request.ShortenURLRequest{
+					Url: "https://google.com",
+					Exp: 3600,
+				},
 			},
 			setupMocks: func(mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
 				mockCodeGen.
@@ -75,9 +83,11 @@ func TestLinkService_ShortenURL(t *testing.T) {
 			},
 		}, {
 			name: "should return error when checking code existence fails",
-			args: request.ShortenURLRequest{
-				Url: "https://google.com",
-				Exp: 3600,
+			args: args{
+				request: request.ShortenURLRequest{
+					Url: "https://google.com",
+					Exp: 3600,
+				},
 			},
 			setupMocks: func(mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
 				mockCodeGen.
@@ -96,9 +106,11 @@ func TestLinkService_ShortenURL(t *testing.T) {
 			},
 		}, {
 			name: "should retry code generation when code already exists",
-			args: request.ShortenURLRequest{
-				Url: "https://google.com",
-				Exp: 3600,
+			args: args{
+				request: request.ShortenURLRequest{
+					Url: "https://google.com",
+					Exp: 3600,
+				},
 			},
 			setupMocks: func(mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
 				// First attempt
@@ -140,9 +152,11 @@ func TestLinkService_ShortenURL(t *testing.T) {
 			},
 		}, {
 			name: "should return error when saving link fails",
-			args: request.ShortenURLRequest{
-				Url: "https://google.com",
-				Exp: 3600,
+			args: args{
+				request: request.ShortenURLRequest{
+					Url: "https://google.com",
+					Exp: 3600,
+				},
 			},
 			setupMocks: func(mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
 				mockCodeGen.
@@ -187,7 +201,7 @@ func TestLinkService_ShortenURL(t *testing.T) {
 			service := NewLinkService(mockRepo, mockCodeGen)
 
 			ctx := context.Background()
-			code, err := service.ShortenURL(ctx, tc.args)
+			code, err := service.ShortenURL(ctx, tc.args.request)
 
 			tc.verifyResponse(t, code, err)
 

@@ -108,7 +108,7 @@ type Router struct {
 }
 
 // NewRouter creates and configures a new HTTP router with all API endpoints.
-func NewRouter(port string) *Router <span class="cov10" title="42">{
+func NewRouter(port string) *Router <span class="cov10" title="9">{
         engine := gin.Default()
 
         engine.GET(
@@ -123,7 +123,7 @@ func NewRouter(port string) *Router <span class="cov10" title="42">{
 }</span>
 
 // GroupV1 returns a router group for API version 1 endpoints.
-func (r *Router) GroupV1() *gin.RouterGroup <span class="cov10" title="42">{
+func (r *Router) GroupV1() *gin.RouterGroup <span class="cov10" title="9">{
         return r.engine.Group("/api/v1")
 }</span>
 
@@ -131,7 +131,7 @@ func (r *Router) GroupV1() *gin.RouterGroup <span class="cov10" title="42">{
 func RegisterHealthRoutes(
         routerGroup *gin.RouterGroup,
         healthCheckHandler handler.HealthCheck,
-) <span class="cov6" title="9">{
+) <span class="cov3" title="2">{
         routerGroup.GET(
                 "/health-check",
                 healthCheckHandler.GetHealthCheck,
@@ -142,7 +142,7 @@ func RegisterHealthRoutes(
 func RegisterLinkRoutes(
         routerGroup *gin.RouterGroup,
         linkHandler handler.Link,
-) <span class="cov9" title="33">{
+) <span class="cov8" title="7">{
         routerGroup.POST(
                 "/links/shorten",
                 linkHandler.ShortenURL,
@@ -158,7 +158,7 @@ func RegisterLinkRoutes(
 func (r *Router) ServeHTTP(
         writer http.ResponseWriter,
         request *http.Request,
-) <span class="cov10" title="42">{
+) <span class="cov10" title="9">{
         r.engine.ServeHTTP(writer, request)
 }</span>
 
@@ -176,6 +176,7 @@ import (
         "github.com/gin-gonic/gin"
         "github.com/huypham67/bookmark-management/internal/dto/response"
         "github.com/huypham67/bookmark-management/internal/service"
+        "github.com/rs/zerolog/log"
 )
 
 // HealthCheck defines the contract for health check HTTP handlers.
@@ -188,7 +189,7 @@ type healthCheckHandler struct {
 }
 
 // NewHealthCheckHandler creates a new health check handler with the given health check service.
-func NewHealthCheckHandler(healthCheckService service.HealthCheckService) HealthCheck <span class="cov10" title="27">{
+func NewHealthCheckHandler(healthCheckService service.HealthCheckService) HealthCheck <span class="cov10" title="4">{
         return &amp;healthCheckHandler{
                 healthCheckService: healthCheckService,
         }
@@ -204,14 +205,18 @@ func NewHealthCheckHandler(healthCheckService service.HealthCheckService) Health
 // @Success 200 {object} response.HealthCheckResponse
 // @Failure 500 {object} response.HealthCheckResponse
 // @Router /health-check [get]
-func (h *healthCheckHandler) GetHealthCheck(c *gin.Context) <span class="cov10" title="27">{
+func (h *healthCheckHandler) GetHealthCheck(c *gin.Context) <span class="cov10" title="4">{
         var res response.HealthCheckResponse
         res = h.healthCheckService.GetStatus()
-        if res.Message == "FAILED" </span><span class="cov5" title="6">{
+        if res.Message == "FAILED" </span><span class="cov5" title="2">{
+                log.Error().
+                        Str("message", res.Message).
+                        Msg("500 - health check failed")
+
                 c.JSON(http.StatusInternalServerError, res)
                 return
         }</span>
-        <span class="cov9" title="21">c.JSON(http.StatusOK, res)</span>
+        <span class="cov5" title="2">c.JSON(http.StatusOK, res)</span>
 }
 </pre>
 		
@@ -225,6 +230,7 @@ import (
         "github.com/huypham67/bookmark-management/internal/dto/request"
         "github.com/huypham67/bookmark-management/internal/dto/response"
         "github.com/huypham67/bookmark-management/internal/service"
+        "github.com/rs/zerolog/log"
 )
 
 // Link defines the contract for link HTTP handlers.
@@ -239,7 +245,7 @@ type linkHandler struct {
 }
 
 // NewLinkHandler creates a new link handler with the given link service.
-func NewLinkHandler(linkService service.LinkService) Link <span class="cov10" title="105">{
+func NewLinkHandler(linkService service.LinkService) Link <span class="cov10" title="12">{
         return &amp;linkHandler{
                 linkService: linkService,
                 validate:    validator.New(),
@@ -258,10 +264,10 @@ func NewLinkHandler(linkService service.LinkService) Link <span class="cov10" ti
 // @Failure 400 {object} gin.H "Invalid request body"
 // @Failure 500 {object} gin.H "Internal server error"
 // @Router /links/shorten [post]
-func (h *linkHandler) ShortenURL(c *gin.Context) <span class="cov8" title="60">{
+func (h *linkHandler) ShortenURL(c *gin.Context) <span class="cov8" title="7">{
         var req request.ShortenURLRequest
 
-        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov5" title="9">{
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov1" title="1">{
                 c.JSON(http.StatusBadRequest, gin.H{
                         "error": "Invalid request body",
                 })
@@ -269,16 +275,22 @@ func (h *linkHandler) ShortenURL(c *gin.Context) <span class="cov8" title="60">{
         }</span>
 
         // Validate the request
-        <span class="cov8" title="51">if err := h.validate.Struct(&amp;req); err != nil </span><span class="cov5" title="9">{
+        <span class="cov7" title="6">if err := h.validate.Struct(&amp;req); err != nil </span><span class="cov3" title="2">{
                 c.JSON(http.StatusBadRequest, gin.H{
                         "error": "Validation failed: " + err.Error(),
                 })
                 return
         }</span>
 
-        <span class="cov8" title="42">code, err := h.linkService.ShortenURL(req)
+        <span class="cov6" title="4">code, err := h.linkService.ShortenURL(c.Request.Context(), req)
 
-        if err != nil </span><span class="cov3" title="3">{
+        if err != nil </span><span class="cov3" title="2">{
+                log.Error().
+                        Err(err).
+                        Str("url", req.Url).
+                        Int64("exp", req.Exp).
+                        Msg("500 - failed to shorten URL")
+
                 c.JSON(http.StatusInternalServerError, gin.H{
                         "error": "Internal Server Error",
                 })
@@ -286,7 +298,7 @@ func (h *linkHandler) ShortenURL(c *gin.Context) <span class="cov8" title="60">{
                 return
         }</span>
 
-        <span class="cov8" title="39">c.JSON(http.StatusOK, response.ShortenURLResponse{
+        <span class="cov3" title="2">c.JSON(http.StatusOK, response.ShortenURLResponse{
                 Code:    code,
                 Message: "Shorten URL generated successfully",
         })</span>
@@ -304,19 +316,19 @@ func (h *linkHandler) ShortenURL(c *gin.Context) <span class="cov8" title="60">{
 // @Failure 404 {object} gin.H "Short link not found"
 // @Failure 500 {object} gin.H "Internal server error"
 // @Router /links/redirect/{code} [get]
-func (h *linkHandler) RedirectToURL(c *gin.Context) <span class="cov8" title="42">{
+func (h *linkHandler) RedirectToURL(c *gin.Context) <span class="cov6" title="5">{
         code := c.Param("code")
 
-        url, err := h.linkService.GetOriginalURL(code)
+        url, err := h.linkService.GetOriginalURL(c.Request.Context(), code)
 
-        if err != nil </span><span class="cov5" title="12">{
+        if err != nil </span><span class="cov4" title="3">{
                 c.JSON(http.StatusNotFound, gin.H{
                         "error": "Short link not found",
                 })
                 return
         }</span>
 
-        <span class="cov7" title="30">c.Redirect(http.StatusFound, url)</span>
+        <span class="cov3" title="2">c.Redirect(http.StatusFound, url)</span>
 }
 </pre>
 		
@@ -331,9 +343,9 @@ import (
 
 // Link defines the contract for link repository operations.
 type Link interface {
-        SaveLink(code string, url string, exp int64) error
-        CheckExists(code string) (bool, error)
-        GetLink(code string) (string, error)
+        SaveLink(ctx context.Context, code string, url string, exp int64) error
+        CheckExists(ctx context.Context, code string) (bool, error)
+        GetLink(ctx context.Context, code string) (string, error)
 }
 
 type linkRepository struct {
@@ -341,33 +353,33 @@ type linkRepository struct {
 }
 
 // NewLinkRepository creates a new link repository with the given Redis client.
-func NewLinkRepository(redisClient *redis.RedisClient) Link <span class="cov10" title="49">{
+func NewLinkRepository(redisClient *redis.RedisClient) Link <span class="cov10" title="14">{
         return &amp;linkRepository{
                 redisClient: redisClient,
         }
 }</span>
 
 // SaveLink saves a shortened URL code mapping to the provided URL in Redis with an expiration time.
-func (r *linkRepository) SaveLink(code string, url string, exp int64) error <span class="cov8" title="28">{
-        return r.redisClient.Client.Set(context.Background(), code, url, time.Duration(exp)*time.Second).Err()
+func (r *linkRepository) SaveLink(ctx context.Context, code string, url string, exp int64) error <span class="cov8" title="9">{
+        return r.redisClient.Client.Set(ctx, code, url, time.Duration(exp)*time.Second).Err()
 }</span>
 
 // CheckExists checks whether a shortened URL code already exists in Redis.
-func (r *linkRepository) CheckExists(code string) (bool, error) <span class="cov8" title="26">{
-        result, err := r.redisClient.Client.Exists(context.Background(), code).Result()
-        if err != nil </span><span class="cov1" title="1">{
+func (r *linkRepository) CheckExists(ctx context.Context, code string) (bool, error) <span class="cov8" title="8">{
+        result, err := r.redisClient.Client.Exists(ctx, code).Result()
+        if err != nil </span><span class="cov3" title="2">{
                 return false, err
         }</span>
-        <span class="cov8" title="25">return result &gt; 0, nil</span>
+        <span class="cov7" title="6">return result &gt; 0, nil</span>
 }
 
 // GetLink retrieves the original URL for a given shortened code from Redis.
-func (r *linkRepository) GetLink(code string) (string, error) <span class="cov8" title="27">{
-        url, err := r.redisClient.Client.Get(context.Background(), code).Result()
-        if err != nil </span><span class="cov4" title="4">{
+func (r *linkRepository) GetLink(ctx context.Context, code string) (string, error) <span class="cov6" title="5">{
+        url, err := r.redisClient.Client.Get(ctx, code).Result()
+        if err != nil </span><span class="cov3" title="2">{
                 return "", err
         }</span>
-        <span class="cov8" title="23">return url, nil</span>
+        <span class="cov4" title="3">return url, nil</span>
 }
 </pre>
 		
@@ -376,6 +388,7 @@ func (r *linkRepository) GetLink(code string) (string, error) <span class="cov8"
 import (
         "github.com/huypham67/bookmark-management/internal/dto/response"
         "github.com/huypham67/bookmark-management/pkg/redis"
+        "github.com/rs/zerolog/log"
 )
 
 const statusMessage = "OK"
@@ -393,7 +406,7 @@ type healthCheckService struct {
 }
 
 // NewHealthCheckService creates a new health check service.
-func NewHealthCheckService(serviceName string, instanceID string, pinger redis.Pinger) HealthCheckService <span class="cov10" title="15">{
+func NewHealthCheckService(serviceName string, instanceID string, pinger redis.Pinger) HealthCheckService <span class="cov10" title="4">{
         return &amp;healthCheckService{
                 serviceName: serviceName,
                 instanceID:  instanceID,
@@ -402,8 +415,13 @@ func NewHealthCheckService(serviceName string, instanceID string, pinger redis.P
 }</span>
 
 // GetStatus returns the current application health status with service name, instance ID, and Redis connection status.
-func (s *healthCheckService) GetStatus() response.HealthCheckResponse <span class="cov10" title="15">{
-        if err := s.pinger.Ping(); err != nil </span><span class="cov4" title="3">{
+func (s *healthCheckService) GetStatus() response.HealthCheckResponse <span class="cov10" title="4">{
+        if err := s.pinger.Ping(); err != nil </span><span class="cov5" title="2">{
+                log.Error().
+                        Err(err).
+                        Str("service", s.serviceName).
+                        Msg("Redis connection failed - health check")
+
                 return response.HealthCheckResponse{
                         Message:     failedStatusMessage,
                         ServiceName: s.serviceName,
@@ -411,7 +429,7 @@ func (s *healthCheckService) GetStatus() response.HealthCheckResponse <span clas
                 }
         }</span>
 
-        <span class="cov9" title="12">return response.HealthCheckResponse{
+        <span class="cov5" title="2">return response.HealthCheckResponse{
                 Message:     statusMessage,
                 ServiceName: s.serviceName,
                 InstanceID:  s.instanceID,
@@ -422,15 +440,18 @@ func (s *healthCheckService) GetStatus() response.HealthCheckResponse <span clas
 		<pre class="file" id="file5" style="display: none">package service
 
 import (
+        "context"
+
         "github.com/huypham67/bookmark-management/internal/dto/request"
         "github.com/huypham67/bookmark-management/internal/repository"
         "github.com/huypham67/bookmark-management/internal/utils"
+        "github.com/rs/zerolog/log"
 )
 
 // LinkService defines the contract for link services.
 type LinkService interface {
-        ShortenURL(request request.ShortenURLRequest) (string, error)
-        GetOriginalURL(code string) (string, error)
+        ShortenURL(ctx context.Context, request request.ShortenURLRequest) (string, error)
+        GetOriginalURL(ctx context.Context, code string) (string, error)
 }
 
 type linkService struct {
@@ -439,7 +460,7 @@ type linkService struct {
 }
 
 // NewLinkService creates a new link service with the given repository and code generator.
-func NewLinkService(linkRepo repository.Link, codeGenerator utils.CodeGenerator) LinkService <span class="cov10" title="93">{
+func NewLinkService(linkRepo repository.Link, codeGenerator utils.CodeGenerator) LinkService <span class="cov10" title="14">{
         return &amp;linkService{
                 linkRepo:      linkRepo,
                 codeGenerator: codeGenerator,
@@ -449,34 +470,56 @@ func NewLinkService(linkRepo repository.Link, codeGenerator utils.CodeGenerator)
 const shortCodeLength = 7
 
 // ShortenURL generates a unique short code for the provided URL and saves the mapping to Redis with an expiration time.
-func (link *linkService) ShortenURL(request request.ShortenURLRequest) (string, error) <span class="cov9" title="60">{
+func (link *linkService) ShortenURL(ctx context.Context, request request.ShortenURLRequest) (string, error) <span class="cov8" title="8">{
         code, err := link.codeGenerator.Generate(shortCodeLength)
 
-        if err != nil </span><span class="cov3" title="3">{
+        if err != nil </span><span class="cov1" title="1">{
+                log.Error().
+                        Err(err).
+                        Msg("failed to generate short code")
                 return "", err
         }</span>
 
-        <span class="cov9" title="57">exists, err := link.linkRepo.CheckExists(code)
+        <span class="cov7" title="7">exists, err := link.linkRepo.CheckExists(ctx, code)
 
-        if err != nil </span><span class="cov4" title="6">{
+        if err != nil </span><span class="cov3" title="2">{
+                log.Error().
+                        Err(err).
+                        Str("code", code).
+                        Msg("failed to check if short code exists")
                 return "", err
         }</span>
 
-        <span class="cov8" title="51">if exists </span><span class="cov5" title="12">{
-                return link.ShortenURL(request)
+        <span class="cov6" title="5">if exists </span><span class="cov1" title="1">{
+                return link.ShortenURL(ctx, request)
         }</span>
-        <span class="cov8" title="39">err = link.linkRepo.SaveLink(code, request.Url, request.Exp)
+        <span class="cov5" title="4">err = link.linkRepo.SaveLink(ctx, code, request.Url, request.Exp)
 
-        if err != nil </span><span class="cov3" title="3">{
+        if err != nil </span><span class="cov1" title="1">{
+                log.Error().
+                        Err(err).
+                        Str("code", code).
+                        Str("url", request.Url).
+                        Msg("failed to save short link to Redis")
                 return "", err
         }</span>
-        <span class="cov8" title="36">return code, nil</span>
+        <span class="cov4" title="3">return code, nil</span>
 }
 
 // GetOriginalURL retrieves the original URL for a given shortened code.
-func (link *linkService) GetOriginalURL(code string) (string, error) <span class="cov8" title="42">{
-        return link.linkRepo.GetLink(code)
-}</span>
+func (link *linkService) GetOriginalURL(ctx context.Context, code string) (string, error) <span class="cov6" title="5">{
+        url, err := link.linkRepo.GetLink(ctx, code)
+
+        if err != nil </span><span class="cov4" title="3">{
+                log.Error().
+                        Err(err).
+                        Str("code", code).
+                        Msg("failed to retrieve original URL from Redis")
+                return "", err
+        }</span>
+
+        <span class="cov3" title="2">return url, nil</span>
+}
 </pre>
 		
 		<pre class="file" id="file6" style="display: none">package utils
@@ -496,15 +539,15 @@ type CodeGenerator interface {
 type codeGenerator struct{}
 
 // NewCodeGenerator creates a new code generator instance.
-func NewCodeGenerator() CodeGenerator <span class="cov7" title="33">{
+func NewCodeGenerator() CodeGenerator <span class="cov7" title="7">{
         return &amp;codeGenerator{}
 }</span>
 
 // Generate creates a random string of the specified length using characters from the defined charset.
-func (cg *codeGenerator) Generate(length int) (string, error) <span class="cov6" title="15">{
+func (cg *codeGenerator) Generate(length int) (string, error) <span class="cov3" title="2">{
         result := make([]byte, length)
 
-        for i := range result </span><span class="cov10" title="105">{
+        for i := range result </span><span class="cov10" title="14">{
                 randomIndex, err := rand.Int(
                         rand.Reader,
                         big.NewInt(int64(len(charset))),
@@ -514,10 +557,10 @@ func (cg *codeGenerator) Generate(length int) (string, error) <span class="cov6"
                         return "", err
                 }</span>
 
-                <span class="cov10" title="105">result[i] = charset[randomIndex.Int64()]</span>
+                <span class="cov10" title="14">result[i] = charset[randomIndex.Int64()]</span>
         }
 
-        <span class="cov6" title="15">return string(result), nil</span>
+        <span class="cov3" title="2">return string(result), nil</span>
 }
 </pre>
 		

@@ -29,8 +29,6 @@ func newTestRepository(
 func TestLinkRepository_SaveLink(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-
 	type args struct {
 		code string
 		url  string
@@ -40,7 +38,7 @@ func TestLinkRepository_SaveLink(t *testing.T) {
 	testCases := []struct {
 		name   string
 		args   args
-		verify func(*testing.T, Link, *redis.MockRedis, args)
+		verify func(*testing.T, context.Context, Link, *redis.MockRedis, args)
 	}{
 		{
 			name: "should save link successfully",
@@ -49,10 +47,10 @@ func TestLinkRepository_SaveLink(t *testing.T) {
 				url:  "https://www.google.com",
 				exp:  1234,
 			},
-			verify: func(t *testing.T, repo Link, mockRedis *redis.MockRedis, args args) {
-				url, err := repo.GetLink(ctx, args.code)
+			verify: func(t *testing.T, ctx context.Context, repo Link, mockRedis *redis.MockRedis, a args) {
+				url, err := repo.GetLink(ctx, a.code)
 				require.NoError(t, err)
-				require.Equal(t, args.url, url)
+				require.Equal(t, a.url, url)
 			},
 		},
 		{
@@ -62,14 +60,14 @@ func TestLinkRepository_SaveLink(t *testing.T) {
 				url:  "https://www.google.com/v2",
 				exp:  1234,
 			},
-			verify: func(t *testing.T, repo Link, mockRedis *redis.MockRedis, args args) {
-				err := repo.SaveLink(ctx, args.code, "https://www.google.com/v1", 1234)
+			verify: func(t *testing.T, ctx context.Context, repo Link, mockRedis *redis.MockRedis, a args) {
+				err := repo.SaveLink(ctx, a.code, "https://www.google.com/v1", 1234)
 				require.NoError(t, err)
-				err = repo.SaveLink(ctx, args.code, args.url, args.exp)
+				err = repo.SaveLink(ctx, a.code, a.url, a.exp)
 				require.NoError(t, err)
-				url, err := repo.GetLink(ctx, args.code)
+				url, err := repo.GetLink(ctx, a.code)
 				require.NoError(t, err)
-				require.Equal(t, args.url, url)
+				require.Equal(t, a.url, url)
 			},
 		},
 		{
@@ -79,8 +77,8 @@ func TestLinkRepository_SaveLink(t *testing.T) {
 				url:  "https://www.google.com",
 				exp:  1,
 			},
-			verify: func(t *testing.T, repo Link, mockRedis *redis.MockRedis, args args) {
-				exists, err := repo.CheckExists(ctx, args.code)
+			verify: func(t *testing.T, ctx context.Context, repo Link, mockRedis *redis.MockRedis, a args) {
+				exists, err := repo.CheckExists(ctx, a.code)
 				require.NoError(t, err)
 				assert.True(t, exists)
 
@@ -88,7 +86,7 @@ func TestLinkRepository_SaveLink(t *testing.T) {
 
 				exists, err = repo.CheckExists(
 					ctx,
-					args.code,
+					a.code,
 				)
 
 				require.NoError(t, err)
@@ -102,21 +100,21 @@ func TestLinkRepository_SaveLink(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			ctx := context.Background()
+
 			repo, mockRedis := newTestRepository(t)
 
 			err := repo.SaveLink(ctx, tc.args.code, tc.args.url, tc.args.exp)
 
 			require.NoError(t, err)
 
-			tc.verify(t, repo, mockRedis, tc.args)
+			tc.verify(t, ctx, repo, mockRedis, tc.args)
 		})
 	}
 }
 
 func TestLinkRepository_CheckExists(t *testing.T) {
 	t.Parallel()
-
-	ctx := context.Background()
 
 	type args struct {
 		code string
@@ -130,7 +128,7 @@ func TestLinkRepository_CheckExists(t *testing.T) {
 	}{
 		{
 			name: "should return true if code exists",
-			setupDataFunc: func(_ context.Context, repo Link) {
+			setupDataFunc: func(ctx context.Context, repo Link) {
 				err := repo.SaveLink(ctx, "abc1234", "https://www.google.com", 1234)
 				require.NoError(t, err)
 			},
@@ -153,9 +151,10 @@ func TestLinkRepository_CheckExists(t *testing.T) {
 				require.NoError(t, err)
 				assert.False(t, exists)
 			},
-		}, {
+		},
+		{
 			name: "should return false if key expired",
-			setupDataFunc: func(_ context.Context, repo Link) {
+			setupDataFunc: func(ctx context.Context, repo Link) {
 				err := repo.SaveLink(ctx, "abc1234", "https://www.google.com", 1)
 				require.NoError(t, err)
 				time.Sleep(2 * time.Second)
@@ -169,7 +168,7 @@ func TestLinkRepository_CheckExists(t *testing.T) {
 			},
 		}, {
 			name: "should return error if Redis client is unavailable",
-			setupDataFunc: func(_ context.Context, repo Link) {
+			setupDataFunc: func(ctx context.Context, repo Link) {
 				err := repo.SaveLink(ctx, "abc1234", "https://www.google.com", 1234)
 				require.NoError(t, err)
 			},
@@ -189,6 +188,8 @@ func TestLinkRepository_CheckExists(t *testing.T) {
 
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
+			ctx := context.Background()
 
 			repo, mockRedis := newTestRepository(t)
 

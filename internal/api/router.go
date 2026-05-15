@@ -12,11 +12,10 @@ import (
 // Router wraps the Gin engine and application server configuration.
 type Router struct {
 	engine *gin.Engine
-	port   string
 }
 
 // NewRouter creates and configures a new HTTP router with all API endpoints.
-func NewRouter(port string) *Router {
+func NewRouter() *Router {
 	engine := gin.Default()
 
 	engine.GET(
@@ -26,7 +25,6 @@ func NewRouter(port string) *Router {
 
 	return &Router{
 		engine: engine,
-		port:   port,
 	}
 }
 
@@ -70,7 +68,7 @@ func (r *Router) ServeHTTP(
 	r.engine.ServeHTTP(writer, request)
 }
 
-// Run starts the HTTP server on the configured port.
-func (r *Router) Run() error {
-	return r.engine.Run(":" + r.port)
+// Engine exposes underlying Gin engine
+func (r *Router) Engine() *gin.Engine {
+	return r.engine
 }
