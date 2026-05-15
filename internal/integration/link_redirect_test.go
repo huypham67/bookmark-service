@@ -18,16 +18,14 @@ func TestRedirectToURLEndpoint(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name        string
-		code        string
-		originalURL string
-		setupRedis  func(*TestApp)
-		expected    expected
+		name       string
+		code       string
+		setupRedis func(*TestApp)
+		expected   expected
 	}{
 		{
-			name:        "should redirect successfully when code exists",
-			code:        "abc1234",
-			originalURL: "https://www.google.com",
+			name: "should redirect successfully when code exists",
+			code: "abc1234",
 			setupRedis: func(app *TestApp) {
 				app.MockRedis.Server.Set("abc1234", "https://www.google.com")
 			},
@@ -37,9 +35,8 @@ func TestRedirectToURLEndpoint(t *testing.T) {
 			},
 		},
 		{
-			name:        "should return 404 when code does not exist",
-			code:        "missing",
-			originalURL: "",
+			name: "should return 404 when code does not exist",
+			code: "missing",
 			setupRedis: func(app *TestApp) {
 				// No setup needed since the code does not exist
 			},
@@ -49,9 +46,8 @@ func TestRedirectToURLEndpoint(t *testing.T) {
 			},
 		},
 		{
-			name:        "should return 404 when redis connection fails",
-			code:        "abc1234",
-			originalURL: "https://www.google.com",
+			name: "should return 404 when redis connection fails",
+			code: "abc1234",
 			setupRedis: func(app *TestApp) {
 				app.MockRedis.Close()
 			},
