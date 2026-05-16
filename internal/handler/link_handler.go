@@ -7,7 +7,6 @@ import (
 	"github.com/huypham67/bookmark-service/internal/dto/request"
 	"github.com/huypham67/bookmark-service/internal/dto/response"
 	"github.com/huypham67/bookmark-service/internal/service"
-	"github.com/huypham67/bookmark-service/pkg/validator"
 	"github.com/rs/zerolog/log"
 )
 
@@ -50,15 +49,7 @@ func (h *linkHandler) ShortenURL(c *gin.Context) {
 		return
 	}
 
-	// Validate the request
-	if err := validator.Get().Struct(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Validation failed: " + err.Error(),
-		})
-		return
-	}
-
-	code, err := h.linkService.ShortenURL(c.Request.Context(), req)
+	code, err := h.linkService.ShortenURL(c, req)
 
 	if err != nil {
 		log.Error().
@@ -95,7 +86,7 @@ func (h *linkHandler) ShortenURL(c *gin.Context) {
 func (h *linkHandler) RedirectToURL(c *gin.Context) {
 	code := c.Param("code")
 
-	url, err := h.linkService.GetOriginalURL(c.Request.Context(), code)
+	url, err := h.linkService.GetOriginalURL(c, code)
 
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{

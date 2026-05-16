@@ -28,6 +28,5 @@ RUN chown -R ${SERVICE_USER}:${SERVICE_GROUP} /app
 
 USER ${SERVICE_USER}
 
-EXPOSE 8080
 
 CMD ["./bookmark-service"]

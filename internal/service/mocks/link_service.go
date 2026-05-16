@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	"context"
+	context "context"
 
 	request "github.com/huypham67/bookmark-service/internal/dto/request"
 	mock "github.com/stretchr/testify/mock"

@@ -9,15 +9,17 @@ import (
 	"github.com/huypham67/bookmark-service/internal/repository"
 	"github.com/huypham67/bookmark-service/internal/service"
 	"github.com/huypham67/bookmark-service/pkg/logger"
-	"github.com/huypham67/bookmark-service/pkg/redis"
+	pkgRedis "github.com/huypham67/bookmark-service/pkg/redis"
 	"github.com/huypham67/bookmark-service/pkg/utils"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 )
 
 // App represents application runtime container.
 type App struct {
-	config *config.Config
-	router *api.Router
+	config      *config.Config
+	router      *api.Router
+	redisClient *redis.Client
 }
 
 // NewApp initializes application dependencies.
@@ -54,12 +56,13 @@ func NewApp() (*App, error) {
 		Msg("application initialized successfully")
 
 	return &App{
-		config: cfg,
-		router: router,
+		config:      cfg,
+		router:      router,
+		redisClient: redisClient,
 	}, nil
 }
 
-func registerRoutes(router *api.Router, cfg *config.Config, redisClient *redis.RedisClient) {
+func registerRoutes(router *api.Router, cfg *config.Config, redisClient *redis.Client) {
 	apiGroup := router.GroupAPI()
 	apiV1Group := router.GroupV1()
 
@@ -72,19 +75,19 @@ func registerRoutes(router *api.Router, cfg *config.Config, redisClient *redis.R
 	api.RegisterLinkRoutes(apiV1Group, linkHandler)
 }
 
-func initRedisClient() (*redis.RedisClient, error) {
-	return redis.NewRedisClient("")
+func initRedisClient() (*redis.Client, error) {
+	return pkgRedis.NewRedisClient("")
 }
 
-func initHealthHandler(cfg *config.Config, redisClient *redis.RedisClient) handler.HealthCheck {
-	pinger := redis.NewPinger(redisClient.Client)
+func initHealthHandler(cfg *config.Config, redisClient *redis.Client) handler.HealthCheck {
+	pinger := repository.NewPinger(redisClient)
 
 	healthService := service.NewHealthCheckService(cfg.ServiceName, cfg.InstanceID, pinger)
 
 	return handler.NewHealthCheckHandler(healthService)
 }
 
-func initLinkHandler(redisClient *redis.RedisClient) handler.Link {
+func initLinkHandler(redisClient *redis.Client) handler.Link {
 	linkRepository := repository.NewLinkRepository(redisClient)
 
 	codeGenerator := utils.NewCodeGenerator()
@@ -100,4 +103,12 @@ func (a *App) Run() error {
 		":"+a.config.AppPort,
 		a.router,
 	)
+}
+
+// Close closes all application resources.
+func (a *App) Close() error {
+	if a.redisClient != nil {
+		return a.redisClient.Close()
+	}
+	return nil
 }

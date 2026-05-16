@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/huypham67/bookmark-service/pkg/redis"
+	"github.com/redis/go-redis/v9"
 )
 
 // Link defines the contract for link repository operations.
@@ -15,24 +15,24 @@ type Link interface {
 }
 
 type linkRepository struct {
-	redisClient *redis.RedisClient
+	client *redis.Client
 }
 
 // NewLinkRepository creates a new link repository with the given Redis client.
-func NewLinkRepository(redisClient *redis.RedisClient) Link {
+func NewLinkRepository(client *redis.Client) Link {
 	return &linkRepository{
-		redisClient: redisClient,
+		client: client,
 	}
 }
 
 // SaveLink saves a shortened URL code mapping to the provided URL in Redis with an expiration time.
 func (r *linkRepository) SaveLink(ctx context.Context, code string, url string, exp int64) error {
-	return r.redisClient.Client.Set(ctx, code, url, time.Duration(exp)*time.Second).Err()
+	return r.client.Set(ctx, code, url, time.Duration(exp)*time.Second).Err()
 }
 
 // CheckExists checks whether a shortened URL code already exists in Redis.
 func (r *linkRepository) CheckExists(ctx context.Context, code string) (bool, error) {
-	result, err := r.redisClient.Client.Exists(ctx, code).Result()
+	result, err := r.client.Exists(ctx, code).Result()
 	if err != nil {
 		return false, err
 	}
@@ -41,7 +41,7 @@ func (r *linkRepository) CheckExists(ctx context.Context, code string) (bool, er
 
 // GetLink retrieves the original URL for a given shortened code from Redis.
 func (r *linkRepository) GetLink(ctx context.Context, code string) (string, error) {
-	url, err := r.redisClient.Client.Get(ctx, code).Result()
+	url, err := r.client.Get(ctx, code).Result()
 	if err != nil {
 		return "", err
 	}

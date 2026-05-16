@@ -63,7 +63,7 @@ func TestShortenURLEndpoint(t *testing.T) {
 			},
 			expected: expected{
 				statusCode:   http.StatusBadRequest,
-				bodyContains: "Validation failed",
+				bodyContains: "Invalid request body",
 			},
 		},
 		{
@@ -85,8 +85,6 @@ func TestShortenURLEndpoint(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

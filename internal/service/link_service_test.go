@@ -9,7 +9,6 @@ import (
 	repoMocks "github.com/huypham67/bookmark-service/internal/repository/mocks"
 	utilsMocks "github.com/huypham67/bookmark-service/pkg/utils/mocks"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestLinkService_ShortenURL(t *testing.T) {
@@ -20,12 +19,9 @@ func TestLinkService_ShortenURL(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name       string
-		args       args
-		setupMocks func(
-			*repoMocks.Link,
-			*utilsMocks.CodeGenerator,
-		)
+		name           string
+		args           args
+		setupMocks     func(context.Context, *repoMocks.Link, *utilsMocks.CodeGenerator)
 		verifyResponse func(*testing.T, string, error)
 	}{
 		{
@@ -36,21 +32,21 @@ func TestLinkService_ShortenURL(t *testing.T) {
 					Exp: 3600,
 				},
 			},
-			setupMocks: func(mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
+			setupMocks: func(ctx context.Context, mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
 				mockCodeGen.
 					On("Generate", shortCodeLength).
 					Return("abc1234", nil).
 					Once()
 
 				mockRepo.
-					On("CheckExists", mock.Anything, "abc1234").
+					On("CheckExists", ctx, "abc1234").
 					Return(false, nil).
 					Once()
 
 				mockRepo.
 					On(
 						"SaveLink",
-						mock.Anything,
+						ctx,
 						"abc1234",
 						"https://google.com",
 						int64(3600),
@@ -71,7 +67,7 @@ func TestLinkService_ShortenURL(t *testing.T) {
 					Exp: 3600,
 				},
 			},
-			setupMocks: func(mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
+			setupMocks: func(ctx context.Context, mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
 				mockCodeGen.
 					On("Generate", shortCodeLength).
 					Return("", errors.New("code generation failed")).
@@ -89,14 +85,14 @@ func TestLinkService_ShortenURL(t *testing.T) {
 					Exp: 3600,
 				},
 			},
-			setupMocks: func(mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
+			setupMocks: func(ctx context.Context, mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
 				mockCodeGen.
 					On("Generate", shortCodeLength).
 					Return("abc1234", nil).
 					Once()
 
 				mockRepo.
-					On("CheckExists", mock.Anything, "abc1234").
+					On("CheckExists", ctx, "abc1234").
 					Return(false, errors.New("redis error")).
 					Once()
 			},
@@ -112,7 +108,7 @@ func TestLinkService_ShortenURL(t *testing.T) {
 					Exp: 3600,
 				},
 			},
-			setupMocks: func(mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
+			setupMocks: func(ctx context.Context, mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
 				// First attempt
 				mockCodeGen.
 					On("Generate", shortCodeLength).
@@ -120,7 +116,7 @@ func TestLinkService_ShortenURL(t *testing.T) {
 					Once()
 
 				mockRepo.
-					On("CheckExists", mock.Anything, "abc1234").
+					On("CheckExists", ctx, "abc1234").
 					Return(true, nil).
 					Once()
 
@@ -131,14 +127,14 @@ func TestLinkService_ShortenURL(t *testing.T) {
 					Once()
 
 				mockRepo.
-					On("CheckExists", mock.Anything, "def5678").
+					On("CheckExists", ctx, "def5678").
 					Return(false, nil).
 					Once()
 
 				mockRepo.
 					On(
 						"SaveLink",
-						mock.Anything,
+						ctx,
 						"def5678",
 						"https://google.com",
 						int64(3600),
@@ -158,21 +154,21 @@ func TestLinkService_ShortenURL(t *testing.T) {
 					Exp: 3600,
 				},
 			},
-			setupMocks: func(mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
+			setupMocks: func(ctx context.Context, mockRepo *repoMocks.Link, mockCodeGen *utilsMocks.CodeGenerator) {
 				mockCodeGen.
 					On("Generate", shortCodeLength).
 					Return("abc1234", nil).
 					Once()
 
 				mockRepo.
-					On("CheckExists", mock.Anything, "abc1234").
+					On("CheckExists", ctx, "abc1234").
 					Return(false, nil).
 					Once()
 
 				mockRepo.
 					On(
 						"SaveLink",
-						mock.Anything,
+						ctx,
 						"abc1234",
 						"https://google.com",
 						int64(3600),
@@ -193,14 +189,14 @@ func TestLinkService_ShortenURL(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			ctx := context.Background()
 			mockRepo := new(repoMocks.Link)
 			mockCodeGen := new(utilsMocks.CodeGenerator)
 
-			tc.setupMocks(mockRepo, mockCodeGen)
+			tc.setupMocks(ctx, mockRepo, mockCodeGen)
 
 			service := NewLinkService(mockRepo, mockCodeGen)
 
-			ctx := context.Background()
 			code, err := service.ShortenURL(ctx, tc.args.request)
 
 			tc.verifyResponse(t, code, err)
@@ -221,7 +217,7 @@ func TestLinkService_GetOriginalURL(t *testing.T) {
 	testCases := []struct {
 		name           string
 		args           args
-		setupMocks     func(*repoMocks.Link)
+		setupMocks     func(context.Context, *repoMocks.Link)
 		verifyResponse func(*testing.T, string, error)
 	}{
 		{
@@ -229,9 +225,9 @@ func TestLinkService_GetOriginalURL(t *testing.T) {
 			args: args{
 				code: "abc1234",
 			},
-			setupMocks: func(mockRepo *repoMocks.Link) {
+			setupMocks: func(ctx context.Context, mockRepo *repoMocks.Link) {
 				mockRepo.
-					On("GetLink", mock.Anything, "abc1234").
+					On("GetLink", ctx, "abc1234").
 					Return("https://google.com", nil).
 					Once()
 			},
@@ -245,9 +241,9 @@ func TestLinkService_GetOriginalURL(t *testing.T) {
 			args: args{
 				code: "missing",
 			},
-			setupMocks: func(mockRepo *repoMocks.Link) {
+			setupMocks: func(ctx context.Context, mockRepo *repoMocks.Link) {
 				mockRepo.
-					On("GetLink", mock.Anything, "missing").
+					On("GetLink", ctx, "missing").
 					Return("", errors.New("code not found")).
 					Once()
 			},
@@ -259,17 +255,16 @@ func TestLinkService_GetOriginalURL(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			ctx := context.Background()
 			mockRepo := new(repoMocks.Link)
 			mockCodeGen := new(utilsMocks.CodeGenerator)
-			tc.setupMocks(mockRepo)
+			tc.setupMocks(ctx, mockRepo)
 
 			service := NewLinkService(mockRepo, mockCodeGen)
 
-			ctx := context.Background()
 			url, err := service.GetOriginalURL(ctx, tc.args.code)
 
 			tc.verifyResponse(t, url, err)

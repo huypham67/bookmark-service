@@ -1,11 +1,12 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/huypham67/bookmark-service/internal/dto/response"
-	"github.com/huypham67/bookmark-service/pkg/redis"
+	"github.com/huypham67/bookmark-service/internal/repository/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,7 +21,7 @@ func TestHealthCheckService_GetStatus(t *testing.T) {
 	testCases := []struct {
 		name           string
 		fields         fields
-		setupMock      func(*redis.MockPinger)
+		setupMock      func(context.Context, *mocks.MockPinger)
 		verifyResponse func(*testing.T, response.HealthCheckResponse)
 	}{
 		{
@@ -29,8 +30,8 @@ func TestHealthCheckService_GetStatus(t *testing.T) {
 				serviceName: "bookmark-service",
 				instanceID:  "instance-1",
 			},
-			setupMock: func(mp *redis.MockPinger) {
-				mp.On("Ping").Return(nil).Once()
+			setupMock: func(ctx context.Context, mp *mocks.MockPinger) {
+				mp.On("Ping", ctx).Return(nil).Once()
 			},
 			verifyResponse: func(t *testing.T, res response.HealthCheckResponse) {
 				assert.Equal(t, statusMessage, res.Message)
@@ -44,8 +45,8 @@ func TestHealthCheckService_GetStatus(t *testing.T) {
 				serviceName: "bookmark-service",
 				instanceID:  "instance-1",
 			},
-			setupMock: func(mp *redis.MockPinger) {
-				mp.On("Ping").
+			setupMock: func(ctx context.Context, mp *mocks.MockPinger) {
+				mp.On("Ping", ctx).
 					Return(errors.New("redis connection failed")).
 					Once()
 			},
@@ -58,13 +59,12 @@ func TestHealthCheckService_GetStatus(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			mp := &redis.MockPinger{}
-			tc.setupMock(mp)
+			ctx := context.Background()
+			mp := &mocks.MockPinger{}
+			tc.setupMock(ctx, mp)
 
 			service := NewHealthCheckService(
 				tc.fields.serviceName,
@@ -72,7 +72,7 @@ func TestHealthCheckService_GetStatus(t *testing.T) {
 				mp,
 			)
 
-			res := service.GetStatus()
+			res := service.GetStatus(ctx)
 
 			tc.verifyResponse(t, res)
 			mp.AssertExpectations(t)

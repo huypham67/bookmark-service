@@ -22,7 +22,7 @@ func setupHealthCheckTestApp(t *testing.T, serviceName string, instanceID string
 
 	mockRedis := redis.NewMockRedis(t)
 
-	pinger := redis.NewPinger(mockRedis.Client)
+	pinger := repository.NewPinger(mockRedis.Client)
 
 	healthService := service.NewHealthCheckService(serviceName, instanceID, pinger)
 
@@ -46,11 +46,7 @@ func setupLinkTestApp(t *testing.T) *TestApp {
 
 	mockRedis := redis.NewMockRedis(t)
 
-	linkRepository := repository.NewLinkRepository(
-		&redis.RedisClient{
-			Client: mockRedis.Client,
-		},
-	)
+	linkRepository := repository.NewLinkRepository(mockRedis.Client)
 
 	linkService := service.NewLinkService(
 		linkRepository,

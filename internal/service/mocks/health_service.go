@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	response "github.com/huypham67/bookmark-service/internal/dto/response"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -12,57 +14,22 @@ type HealthCheckService struct {
 	mock.Mock
 }
 
-type HealthCheckService_Expecter struct {
-	mock *mock.Mock
-}
-
-func (_m *HealthCheckService) EXPECT() *HealthCheckService_Expecter {
-	return &HealthCheckService_Expecter{mock: &_m.Mock}
-}
-
-// GetStatus provides a mock function with no fields
-func (_m *HealthCheckService) GetStatus() response.HealthCheckResponse {
-	ret := _m.Called()
+// GetStatus provides a mock function with given fields: ctx
+func (_m *HealthCheckService) GetStatus(ctx context.Context) response.HealthCheckResponse {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetStatus")
 	}
 
 	var r0 response.HealthCheckResponse
-	if rf, ok := ret.Get(0).(func() response.HealthCheckResponse); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) response.HealthCheckResponse); ok {
+		r0 = rf(ctx)
 	} else {
 		r0 = ret.Get(0).(response.HealthCheckResponse)
 	}
 
 	return r0
-}
-
-// HealthCheckService_GetStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStatus'
-type HealthCheckService_GetStatus_Call struct {
-	*mock.Call
-}
-
-// GetStatus is a helper method to define mock.On call
-func (_e *HealthCheckService_Expecter) GetStatus() *HealthCheckService_GetStatus_Call {
-	return &HealthCheckService_GetStatus_Call{Call: _e.mock.On("GetStatus")}
-}
-
-func (_c *HealthCheckService_GetStatus_Call) Run(run func()) *HealthCheckService_GetStatus_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *HealthCheckService_GetStatus_Call) Return(_a0 response.HealthCheckResponse) *HealthCheckService_GetStatus_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *HealthCheckService_GetStatus_Call) RunAndReturn(run func() response.HealthCheckResponse) *HealthCheckService_GetStatus_Call {
-	_c.Call.Return(run)
-	return _c
 }
 
 // NewHealthCheckService creates a new instance of HealthCheckService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

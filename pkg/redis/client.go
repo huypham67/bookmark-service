@@ -8,13 +8,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// RedisClient wraps the go-redis client with methods for Redis operations.
-type RedisClient struct {
-	Client *redis.Client
-}
-
-// NewRedisClient initializes and returns a new RedisClient based on environment variables with the specified prefix.
-func NewRedisClient(envPrefix string) (*RedisClient, error) {
+// NewRedisClient initializes and returns a new Redis client based on environment variables with the specified prefix.
+func NewRedisClient(envPrefix string) (*redis.Client, error) {
 	config, err := LoadRedisConfig(envPrefix)
 	if err != nil {
 		return nil, err
@@ -39,5 +34,5 @@ func NewRedisClient(envPrefix string) (*RedisClient, error) {
 		return nil, err
 	}
 
-	return &RedisClient{Client: client}, nil
+	return client, nil
 }

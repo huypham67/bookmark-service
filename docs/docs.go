@@ -145,10 +145,12 @@ const docTemplate = `{
             "properties": {
                 "exp": {
                     "type": "integer",
+                    "maximum": 86400,
                     "minimum": 0
                 },
                 "url": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2048
                 }
             }
         },

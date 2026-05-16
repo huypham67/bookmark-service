@@ -17,11 +17,7 @@ func newTestRepository(
 
 	mockRedis := redis.NewMockRedis(t)
 
-	client := &redis.RedisClient{
-		Client: mockRedis.Client,
-	}
-
-	repo := NewLinkRepository(client)
+	repo := NewLinkRepository(mockRedis.Client)
 
 	return repo, mockRedis
 }
@@ -184,8 +180,6 @@ func TestLinkRepository_CheckExists(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

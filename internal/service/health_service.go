@@ -1,8 +1,10 @@
 package service
 
 import (
+	"context"
+
 	"github.com/huypham67/bookmark-service/internal/dto/response"
-	"github.com/huypham67/bookmark-service/pkg/redis"
+	"github.com/huypham67/bookmark-service/internal/repository"
 	"github.com/rs/zerolog/log"
 )
 
@@ -11,17 +13,17 @@ const failedStatusMessage = "FAILED"
 
 // HealthCheckService defines the contract for health check services.
 type HealthCheckService interface {
-	GetStatus() response.HealthCheckResponse
+	GetStatus(ctx context.Context) response.HealthCheckResponse
 }
 
 type healthCheckService struct {
 	serviceName string
 	instanceID  string
-	pinger      redis.Pinger
+	pinger      repository.Pinger
 }
 
 // NewHealthCheckService creates a new health check service.
-func NewHealthCheckService(serviceName string, instanceID string, pinger redis.Pinger) HealthCheckService {
+func NewHealthCheckService(serviceName string, instanceID string, pinger repository.Pinger) HealthCheckService {
 	return &healthCheckService{
 		serviceName: serviceName,
 		instanceID:  instanceID,
@@ -30,8 +32,8 @@ func NewHealthCheckService(serviceName string, instanceID string, pinger redis.P
 }
 
 // GetStatus checks the health status of the application by pinging Redis and returns a HealthCheckResponse.
-func (s *healthCheckService) GetStatus() response.HealthCheckResponse {
-	if err := s.pinger.Ping(); err != nil {
+func (s *healthCheckService) GetStatus(ctx context.Context) response.HealthCheckResponse {
+	if err := s.pinger.Ping(ctx); err != nil {
 		log.Error().
 			Err(err).
 			Str("service", s.serviceName).

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +12,6 @@ import (
 	"github.com/huypham67/bookmark-service/internal/dto/request"
 	"github.com/huypham67/bookmark-service/internal/service/mocks"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestLinkHandler_ShortenURL(t *testing.T) {
@@ -25,7 +25,7 @@ func TestLinkHandler_ShortenURL(t *testing.T) {
 	testCases := []struct {
 		name        string
 		requestBody string
-		setupMock   func(service *mocks.LinkService)
+		setupMock   func(context.Context, *mocks.LinkService)
 		expected    expected
 	}{
 		{
@@ -34,11 +34,11 @@ func TestLinkHandler_ShortenURL(t *testing.T) {
 				"url": "https://www.google.com",
 				"exp": 3600
 			}`,
-			setupMock: func(mockService *mocks.LinkService) {
+			setupMock: func(ctx context.Context, mockService *mocks.LinkService) {
 				mockService.
 					On(
 						"ShortenURL",
-						mock.Anything,
+						ctx,
 						request.ShortenURLRequest{
 							Url: "https://www.google.com",
 							Exp: 3600,
@@ -57,12 +57,12 @@ func TestLinkHandler_ShortenURL(t *testing.T) {
 				"url": "invalid-url",
 				"exp": 3600
 			}`,
-			setupMock: func(mockService *mocks.LinkService) {
+			setupMock: func(ctx context.Context, mockService *mocks.LinkService) {
 				// No need to set up mock for validation failure
 			},
 			expected: expected{
 				statusCode: http.StatusBadRequest,
-				body:       "Validation failed",
+				body:       "Invalid request body",
 			},
 		}, {
 			name: "should return 500 when service returns error",
@@ -70,11 +70,11 @@ func TestLinkHandler_ShortenURL(t *testing.T) {
 				"url": "https://www.google.com",
 				"exp": 3600
 			}`,
-			setupMock: func(mockService *mocks.LinkService) {
+			setupMock: func(ctx context.Context, mockService *mocks.LinkService) {
 				mockService.
 					On(
 						"ShortenURL",
-						mock.Anything,
+						ctx,
 						request.ShortenURLRequest{
 							Url: "https://www.google.com",
 							Exp: 3600,
@@ -98,9 +98,6 @@ func TestLinkHandler_ShortenURL(t *testing.T) {
 
 			gin.SetMode(gin.TestMode)
 			mockSvc := mocks.NewLinkService(t)
-			tc.setupMock(mockSvc)
-
-			handler := NewLinkHandler(mockSvc)
 
 			recorder := httptest.NewRecorder()
 
@@ -114,6 +111,10 @@ func TestLinkHandler_ShortenURL(t *testing.T) {
 
 			httpRequest.Header.Set("Content-Type", "application/json")
 			ctx.Request = httpRequest
+
+			tc.setupMock(ctx, mockSvc)
+
+			handler := NewLinkHandler(mockSvc)
 
 			handler.ShortenURL(ctx)
 
@@ -139,17 +140,17 @@ func TestLinkHandler_RedirectToURL(t *testing.T) {
 	testCases := []struct {
 		name      string
 		code      string
-		setupMock func(service *mocks.LinkService)
+		setupMock func(context.Context, *mocks.LinkService)
 		expected  expected
 	}{
 		{
 			name: "should redirect to original URL successfully",
 			code: "abc1234",
-			setupMock: func(mockService *mocks.LinkService) {
+			setupMock: func(ctx context.Context, mockService *mocks.LinkService) {
 				mockService.
 					On(
 						"GetOriginalURL",
-						mock.Anything,
+						ctx,
 						"abc1234",
 					).
 					Return("https://www.google.com", nil).
@@ -159,14 +160,15 @@ func TestLinkHandler_RedirectToURL(t *testing.T) {
 				statusCode: http.StatusFound,
 				location:   "https://www.google.com",
 			},
-		}, {
+		},
+		{
 			name: "should return 404 when shorten code does not exist",
 			code: "missing",
-			setupMock: func(mockService *mocks.LinkService) {
+			setupMock: func(ctx context.Context, mockService *mocks.LinkService) {
 				mockService.
 					On(
 						"GetOriginalURL",
-						mock.Anything,
+						ctx,
 						"missing",
 					).
 					Return("", errors.New("not found")).
@@ -178,23 +180,23 @@ func TestLinkHandler_RedirectToURL(t *testing.T) {
 			},
 		},
 	}
-
 	for _, tc := range testCases {
-		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			gin.SetMode(gin.TestMode)
 			mockSvc := mocks.NewLinkService(t)
-			tc.setupMock(mockSvc)
 
-			handler := NewLinkHandler(mockSvc)
 			recorder := httptest.NewRecorder()
 			ctx, _ := gin.CreateTestContext(recorder)
 			httpRequest := httptest.NewRequest(http.MethodGet, "/links/"+tc.code, nil)
 			ctx.Request = httpRequest
 			ctx.Params = []gin.Param{{Key: "code", Value: tc.code}}
+
+			tc.setupMock(ctx, mockSvc)
+
+			handler := NewLinkHandler(mockSvc)
 
 			handler.RedirectToURL(ctx)
 

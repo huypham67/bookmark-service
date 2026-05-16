@@ -6,9 +6,11 @@ definitions:
   github_com_huypham67_bookmark-service_internal_dto_request.ShortenURLRequest:
     properties:
       exp:
+        maximum: 86400
         minimum: 0
         type: integer
       url:
+        maxLength: 2048
         type: string
     required:
     - url

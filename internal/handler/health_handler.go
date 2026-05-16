@@ -36,7 +36,7 @@ func NewHealthCheckHandler(healthCheckService service.HealthCheckService) Health
 // @Failure 500 {object} response.HealthCheckResponse
 // @Router /health-check [get]
 func (h *healthCheckHandler) GetHealthCheck(c *gin.Context) {
-	res := h.healthCheckService.GetStatus()
+	res := h.healthCheckService.GetStatus(c)
 	if res.Message == "FAILED" {
 		log.Error().
 			Str("message", res.Message).
