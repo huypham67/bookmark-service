@@ -16,19 +16,19 @@ type Config struct {
 
 // LoadConfig loads application configuration from environment variables.
 func LoadConfig() (*Config, error) {
-	config := &Config{}
+	cfg := &Config{}
 
-	err := envconfig.Process("", config)
+	err := envconfig.Process("", cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	config.ServiceName = strings.TrimSpace(config.ServiceName)
-	config.InstanceID = strings.TrimSpace(config.InstanceID)
+	cfg.ServiceName = strings.TrimSpace(cfg.ServiceName)
+	cfg.InstanceID = strings.TrimSpace(cfg.InstanceID)
 
-	if config.InstanceID == "" {
-		config.InstanceID = uuid.New().String()
+	if cfg.InstanceID == "" {
+		cfg.InstanceID = uuid.New().String()
 	}
 
-	return config, nil
+	return cfg, nil
 }

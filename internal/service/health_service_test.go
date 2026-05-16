@@ -1,77 +1,82 @@
 package service
 
 import (
+	"context"
+	"errors"
 	"testing"
 
-	"github.com/google/uuid"
-	"github.com/huypham67/bookmark-management/internal/config"
+	"github.com/huypham67/bookmark-service/internal/dto/response"
+	"github.com/huypham67/bookmark-service/internal/repository/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestHealthCheckService_GetStatus(t *testing.T) {
+	t.Parallel()
+
+	type fields struct {
+		serviceName string
+		instanceID  string
+	}
+
 	testCases := []struct {
-		name                    string
-		serviceName             string
-		instanceID              string
-		expectedServiceName     string
-		expectGeneratedInstance bool
+		name           string
+		fields         fields
+		setupMock      func(context.Context, *mocks.MockPinger)
+		verifyResponse func(*testing.T, response.HealthCheckResponse)
 	}{
 		{
-			name:                    "Valid: ServiceName and InstanceID are provided -> should return provided values",
-			serviceName:             "bookmark-service",
-			instanceID:              "instance-1",
-			expectedServiceName:     "bookmark-service",
-			expectGeneratedInstance: false,
+			name: "should return OK when redis ping succeeds",
+			fields: fields{
+				serviceName: "bookmark-service",
+				instanceID:  "instance-1",
+			},
+			setupMock: func(ctx context.Context, mp *mocks.MockPinger) {
+				mp.On("Ping", ctx).Return(nil).Once()
+			},
+			verifyResponse: func(t *testing.T, res response.HealthCheckResponse) {
+				assert.Equal(t, statusMessage, res.Message)
+				assert.Equal(t, "bookmark-service", res.ServiceName)
+				assert.Equal(t, "instance-1", res.InstanceID)
+			},
 		},
 		{
-			name:                    "should return provided service name and generated instance ID if instance ID is empty",
-			serviceName:             "bookmark-service",
-			instanceID:              "",
-			expectedServiceName:     "bookmark-service",
-			expectGeneratedInstance: true,
-		},
-		{
-			name:                    "should return empty service name and provided instance ID if service name is empty",
-			serviceName:             "",
-			instanceID:              "instance-1",
-			expectedServiceName:     "",
-			expectGeneratedInstance: false,
-		},
-		{
-			name:                    "should return empty service name and generated instance ID if service name and instance ID are empty",
-			serviceName:             "",
-			instanceID:              "",
-			expectedServiceName:     "",
-			expectGeneratedInstance: true,
-		},
-		{
-			name:                    "should return generated instance ID if instance ID is not provided",
-			serviceName:             "bookmark-service",
-			expectedServiceName:     "bookmark-service",
-			expectGeneratedInstance: true,
+			name: "should return FAILED when ping fails",
+			fields: fields{
+				serviceName: "bookmark-service",
+				instanceID:  "instance-1",
+			},
+			setupMock: func(ctx context.Context, mp *mocks.MockPinger) {
+				mp.On("Ping", ctx).
+					Return(errors.New("redis connection failed")).
+					Once()
+			},
+			verifyResponse: func(t *testing.T, res response.HealthCheckResponse) {
+				assert.Equal(t, failedStatusMessage, res.Message)
+				assert.Equal(t, "bookmark-service", res.ServiceName)
+				assert.Equal(t, "instance-1", res.InstanceID)
+			},
 		},
 	}
 
 	for _, tc := range testCases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("SERVICE_NAME", tc.serviceName)
-			t.Setenv("INSTANCE_ID", tc.instanceID)
+			t.Parallel()
 
-			cfg, err := config.LoadConfig()
+			ctx := context.Background()
+			mp := &mocks.MockPinger{}
+			tc.setupMock(ctx, mp)
 
-			assert.NoError(t, err)
-			assert.Equal(t, tc.expectedServiceName, cfg.ServiceName)
+			service := NewHealthCheckService(
+				tc.fields.serviceName,
+				tc.fields.instanceID,
+				mp,
+			)
 
-			if tc.expectGeneratedInstance {
-				assert.NotEmpty(t, cfg.InstanceID)
+			res := service.GetStatus(ctx)
 
-				_, err := uuid.Parse(cfg.InstanceID)
-				assert.NoError(t, err)
-			} else {
-				assert.Equal(t, tc.instanceID, cfg.InstanceID)
-			}
+			tc.verifyResponse(t, res)
+			mp.AssertExpectations(t)
+			mp.AssertNumberOfCalls(t, "Ping", 1)
 		})
 	}
 }

@@ -6,12 +6,11 @@
         "contact": {},
         "version": "1.0"
     },
-    "host": "localhost:8080",
-    "basePath": "/api/v1",
+    "basePath": "/api",
     "paths": {
         "/health-check": {
             "get": {
-                "description": "Check application health status",
+                "description": "Check application health status and Redis connection",
                 "consumes": [
                     "application/json"
                 ],
@@ -26,7 +25,100 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_huypham67_bookmark-management_internal_model.HealthCheckResponse"
+                            "$ref": "#/definitions/github_com_huypham67_bookmark-service_internal_dto_response.HealthCheckResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_huypham67_bookmark-service_internal_dto_response.HealthCheckResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/links/redirect/{code}": {
+            "get": {
+                "description": "Redirect user to the original URL based on the shortened code",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "links"
+                ],
+                "summary": "Redirect to Original URL",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shortened code",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "301": {
+                        "description": "Redirect successful"
+                    },
+                    "404": {
+                        "description": "Short link not found",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/links/shorten": {
+            "post": {
+                "description": "Create a shortened URL code and save it to Redis",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "links"
+                ],
+                "summary": "Shorten URL",
+                "parameters": [
+                    {
+                        "description": "URL to shorten",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_huypham67_bookmark-service_internal_dto_request.ShortenURLRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Shorten URL generated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_huypham67_bookmark-service_internal_dto_response.ShortenURLResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
                         }
                     }
                 }
@@ -34,7 +126,28 @@
         }
     },
     "definitions": {
-        "github_com_huypham67_bookmark-management_internal_model.HealthCheckResponse": {
+        "gin.H": {
+            "type": "object",
+            "additionalProperties": {}
+        },
+        "github_com_huypham67_bookmark-service_internal_dto_request.ShortenURLRequest": {
+            "type": "object",
+            "required": [
+                "url"
+            ],
+            "properties": {
+                "exp": {
+                    "type": "integer",
+                    "maximum": 86400,
+                    "minimum": 0
+                },
+                "url": {
+                    "type": "string",
+                    "maxLength": 2048
+                }
+            }
+        },
+        "github_com_huypham67_bookmark-service_internal_dto_response.HealthCheckResponse": {
             "type": "object",
             "properties": {
                 "instance_id": {
@@ -44,6 +157,17 @@
                     "type": "string"
                 },
                 "service_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_huypham67_bookmark-service_internal_dto_response.ShortenURLResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
                     "type": "string"
                 }
             }

@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/huypham67/bookmark-management/internal/handler"
+	"github.com/huypham67/bookmark-service/internal/handler"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -12,14 +12,10 @@ import (
 // Router wraps the Gin engine and application server configuration.
 type Router struct {
 	engine *gin.Engine
-	port   string
 }
 
-// NewRouter creates and configures a new HTTP router.
-func NewRouter(
-	port string,
-	healthCheckHandler handler.HealthCheck,
-) *Router {
+// NewRouter creates and configures a new HTTP router with all API endpoints.
+func NewRouter() *Router {
 	engine := gin.Default()
 
 	engine.GET(
@@ -27,18 +23,46 @@ func NewRouter(
 		ginSwagger.WrapHandler(swaggerFiles.Handler),
 	)
 
-	apiV1 := engine.Group("/api/v1")
-	{
-		apiV1.GET(
-			"/health-check",
-			healthCheckHandler.GetHealthCheck,
-		)
-	}
-
 	return &Router{
 		engine: engine,
-		port:   port,
 	}
+}
+
+// GroupAPI returns a router group for API endpoints.
+func (r *Router) GroupAPI() *gin.RouterGroup {
+	return r.engine.Group("/api")
+}
+
+// GroupV1 returns a router group for API version 1 endpoints.
+func (r *Router) GroupV1() *gin.RouterGroup {
+	return r.GroupAPI().Group("/v1")
+}
+
+// RegisterHealthRoutes registers all health-check routes.
+func RegisterHealthRoutes(
+	apiGroup *gin.RouterGroup,
+	healthCheckHandler handler.HealthCheck,
+) {
+	apiGroup.GET(
+		"/health-check",
+		healthCheckHandler.GetHealthCheck,
+	)
+}
+
+// RegisterLinkRoutes registers all link management routes.
+func RegisterLinkRoutes(
+	routerGroup *gin.RouterGroup,
+	linkHandler handler.Link,
+) {
+	routerGroup.POST(
+		"/links/shorten",
+		linkHandler.ShortenURL,
+	)
+
+	routerGroup.GET(
+		"/links/redirect/:code",
+		linkHandler.RedirectToURL,
+	)
 }
 
 // ServeHTTP implements the http.Handler interface.
@@ -49,7 +73,7 @@ func (r *Router) ServeHTTP(
 	r.engine.ServeHTTP(writer, request)
 }
 
-// Run starts the HTTP server.
-func (r *Router) Run() error {
-	return r.engine.Run(":" + r.port)
+// Engine exposes underlying Gin engine
+func (r *Router) Engine() *gin.Engine {
+	return r.engine
 }
