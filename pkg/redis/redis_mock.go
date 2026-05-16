@@ -44,6 +44,9 @@ func (m *MockRedis) FastForward(duration time.Duration) {
 
 // Close shuts down the mock Redis server and closes the client connection.
 func (m *MockRedis) Close() {
-	m.Client.Close()
+	err := m.Client.Close()
+	if err != nil {
+		return
+	}
 	m.Server.Close()
 }

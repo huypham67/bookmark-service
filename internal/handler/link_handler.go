@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 	"github.com/huypham67/bookmark-service/internal/dto/request"
 	"github.com/huypham67/bookmark-service/internal/dto/response"
 	"github.com/huypham67/bookmark-service/internal/service"
+	"github.com/huypham67/bookmark-service/pkg/validator"
 	"github.com/rs/zerolog/log"
 )
 
@@ -19,14 +19,12 @@ type Link interface {
 
 type linkHandler struct {
 	linkService service.LinkService
-	validate    *validator.Validate
 }
 
 // NewLinkHandler creates a new link handler with the given link service.
 func NewLinkHandler(linkService service.LinkService) Link {
 	return &linkHandler{
 		linkService: linkService,
-		validate:    validator.New(),
 	}
 }
 
@@ -53,7 +51,7 @@ func (h *linkHandler) ShortenURL(c *gin.Context) {
 	}
 
 	// Validate the request
-	if err := h.validate.Struct(&req); err != nil {
+	if err := validator.Get().Struct(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Validation failed: " + err.Error(),
 		})
