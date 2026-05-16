@@ -5,7 +5,7 @@ bin/
 *.so
 *.dylib
 
-bookmark-management
+bookmark-service
 
 .idea/
 *.iwb

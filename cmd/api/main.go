@@ -1,16 +1,16 @@
 package main
 
 import (
-	"github.com/huypham67/bookmark-management/docs"
-	"github.com/huypham67/bookmark-management/internal/bootstrap"
+	"github.com/huypham67/bookmark-service/docs"
+	"github.com/huypham67/bookmark-service/internal/bootstrap"
 
-	_ "github.com/huypham67/bookmark-management/docs"
+	_ "github.com/huypham67/bookmark-service/docs"
 )
 
 // @title Bookmark Management API
 // @version 1.0
 // @description This is the API documentation for the Bookmark Management service.
-// @BasePath /api/v1
+// @BasePath /api
 
 // @securityDefinitions.apikey BearerAuth
 // @in header

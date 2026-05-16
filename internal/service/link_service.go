@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 
-	"github.com/huypham67/bookmark-management/internal/dto/request"
-	"github.com/huypham67/bookmark-management/internal/repository"
-	"github.com/huypham67/bookmark-management/pkg/utils"
+	"github.com/huypham67/bookmark-service/internal/dto/request"
+	"github.com/huypham67/bookmark-service/internal/repository"
+	"github.com/huypham67/bookmark-service/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
 

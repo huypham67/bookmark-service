@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/huypham67/bookmark-management/pkg/redis"
+	"github.com/huypham67/bookmark-service/pkg/redis"
 )
 
 // Link defines the contract for link repository operations.

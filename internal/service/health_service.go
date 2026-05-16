@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/huypham67/bookmark-management/internal/dto/response"
-	"github.com/huypham67/bookmark-management/pkg/redis"
+	"github.com/huypham67/bookmark-service/internal/dto/response"
+	"github.com/huypham67/bookmark-service/pkg/redis"
 	"github.com/rs/zerolog/log"
 )
 

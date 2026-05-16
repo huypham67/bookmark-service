@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/huypham67/bookmark-management/internal/dto/response"
+	"github.com/huypham67/bookmark-service/internal/dto/response"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

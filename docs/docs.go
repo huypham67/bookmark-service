@@ -32,19 +32,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_huypham67_bookmark-management_internal_dto_response.HealthCheckResponse"
+                            "$ref": "#/definitions/github_com_huypham67_bookmark-service_internal_dto_response.HealthCheckResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_huypham67_bookmark-management_internal_dto_response.HealthCheckResponse"
+                            "$ref": "#/definitions/github_com_huypham67_bookmark-service_internal_dto_response.HealthCheckResponse"
                         }
                     }
                 }
             }
         },
-        "/links/redirect/{code}": {
+        "/v1/links/redirect/{code}": {
             "get": {
                 "description": "Redirect user to the original URL based on the shortened code",
                 "consumes": [
@@ -85,7 +85,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/links/shorten": {
+        "/v1/links/shorten": {
             "post": {
                 "description": "Create a shortened URL code and save it to Redis",
                 "consumes": [
@@ -105,7 +105,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_huypham67_bookmark-management_internal_dto_request.ShortenURLRequest"
+                            "$ref": "#/definitions/github_com_huypham67_bookmark-service_internal_dto_request.ShortenURLRequest"
                         }
                     }
                 ],
@@ -113,7 +113,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Shorten URL generated successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_huypham67_bookmark-management_internal_dto_response.ShortenURLResponse"
+                            "$ref": "#/definitions/github_com_huypham67_bookmark-service_internal_dto_response.ShortenURLResponse"
                         }
                     },
                     "400": {
@@ -137,7 +137,7 @@ const docTemplate = `{
             "type": "object",
             "additionalProperties": {}
         },
-        "github_com_huypham67_bookmark-management_internal_dto_request.ShortenURLRequest": {
+        "github_com_huypham67_bookmark-service_internal_dto_request.ShortenURLRequest": {
             "type": "object",
             "required": [
                 "url"
@@ -152,7 +152,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_huypham67_bookmark-management_internal_dto_response.HealthCheckResponse": {
+        "github_com_huypham67_bookmark-service_internal_dto_response.HealthCheckResponse": {
             "type": "object",
             "properties": {
                 "instance_id": {
@@ -166,7 +166,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_huypham67_bookmark-management_internal_dto_response.ShortenURLResponse": {
+        "github_com_huypham67_bookmark-service_internal_dto_response.ShortenURLResponse": {
             "type": "object",
             "properties": {
                 "code": {
@@ -191,7 +191,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "",
-	BasePath:         "/api/v1",
+	BasePath:         "/api",
 	Schemes:          []string{},
 	Title:            "Bookmark Management API",
 	Description:      "This is the API documentation for the Bookmark Management service.",

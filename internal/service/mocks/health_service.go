@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	response "github.com/huypham67/bookmark-management/internal/dto/response"
+	response "github.com/huypham67/bookmark-service/internal/dto/response"
 	mock "github.com/stretchr/testify/mock"
 )
 

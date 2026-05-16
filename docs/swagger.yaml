@@ -1,9 +1,9 @@
-basePath: /api/v1
+basePath: /api
 definitions:
   gin.H:
     additionalProperties: {}
     type: object
-  github_com_huypham67_bookmark-management_internal_dto_request.ShortenURLRequest:
+  github_com_huypham67_bookmark-service_internal_dto_request.ShortenURLRequest:
     properties:
       exp:
         minimum: 0
@@ -13,7 +13,7 @@ definitions:
     required:
     - url
     type: object
-  github_com_huypham67_bookmark-management_internal_dto_response.HealthCheckResponse:
+  github_com_huypham67_bookmark-service_internal_dto_response.HealthCheckResponse:
     properties:
       instance_id:
         type: string
@@ -22,7 +22,7 @@ definitions:
       service_name:
         type: string
     type: object
-  github_com_huypham67_bookmark-management_internal_dto_response.ShortenURLResponse:
+  github_com_huypham67_bookmark-service_internal_dto_response.ShortenURLResponse:
     properties:
       code:
         type: string
@@ -46,15 +46,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_huypham67_bookmark-management_internal_dto_response.HealthCheckResponse'
+            $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_response.HealthCheckResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/github_com_huypham67_bookmark-management_internal_dto_response.HealthCheckResponse'
+            $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_response.HealthCheckResponse'
       summary: Health Check
       tags:
       - health
-  /links/redirect/{code}:
+  /v1/links/redirect/{code}:
     get:
       consumes:
       - application/json
@@ -81,7 +81,7 @@ paths:
       summary: Redirect to Original URL
       tags:
       - links
-  /links/shorten:
+  /v1/links/shorten:
     post:
       consumes:
       - application/json
@@ -92,14 +92,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_huypham67_bookmark-management_internal_dto_request.ShortenURLRequest'
+          $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_request.ShortenURLRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Shorten URL generated successfully
           schema:
-            $ref: '#/definitions/github_com_huypham67_bookmark-management_internal_dto_response.ShortenURLResponse'
+            $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_response.ShortenURLResponse'
         "400":
           description: Invalid request body
           schema:

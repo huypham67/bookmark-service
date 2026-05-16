@@ -3,14 +3,14 @@ package bootstrap
 import (
 	"net/http"
 
-	"github.com/huypham67/bookmark-management/internal/api"
-	"github.com/huypham67/bookmark-management/internal/config"
-	"github.com/huypham67/bookmark-management/internal/handler"
-	"github.com/huypham67/bookmark-management/internal/repository"
-	"github.com/huypham67/bookmark-management/internal/service"
-	"github.com/huypham67/bookmark-management/pkg/logger"
-	"github.com/huypham67/bookmark-management/pkg/redis"
-	"github.com/huypham67/bookmark-management/pkg/utils"
+	"github.com/huypham67/bookmark-service/internal/api"
+	"github.com/huypham67/bookmark-service/internal/config"
+	"github.com/huypham67/bookmark-service/internal/handler"
+	"github.com/huypham67/bookmark-service/internal/repository"
+	"github.com/huypham67/bookmark-service/internal/service"
+	"github.com/huypham67/bookmark-service/pkg/logger"
+	"github.com/huypham67/bookmark-service/pkg/redis"
+	"github.com/huypham67/bookmark-service/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
 
@@ -60,7 +60,8 @@ func NewApp() (*App, error) {
 }
 
 func registerRoutes(router *api.Router, cfg *config.Config, redisClient *redis.RedisClient) {
-	apiGroup := router.GroupV1()
+	apiGroup := router.GroupAPI()
+	apiV1Group := router.GroupV1()
 
 	healthHandler := initHealthHandler(cfg, redisClient)
 
@@ -68,7 +69,7 @@ func registerRoutes(router *api.Router, cfg *config.Config, redisClient *redis.R
 
 	api.RegisterHealthRoutes(apiGroup, healthHandler)
 
-	api.RegisterLinkRoutes(apiGroup, linkHandler)
+	api.RegisterLinkRoutes(apiV1Group, linkHandler)
 }
 
 func initRedisClient() (*redis.RedisClient, error) {

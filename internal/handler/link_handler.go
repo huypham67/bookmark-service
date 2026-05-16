@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/huypham67/bookmark-management/internal/dto/request"
-	"github.com/huypham67/bookmark-management/internal/dto/response"
-	"github.com/huypham67/bookmark-management/internal/service"
+	"github.com/huypham67/bookmark-service/internal/dto/request"
+	"github.com/huypham67/bookmark-service/internal/dto/response"
+	"github.com/huypham67/bookmark-service/internal/service"
 	"github.com/rs/zerolog/log"
 )
 
@@ -41,7 +41,7 @@ func NewLinkHandler(linkService service.LinkService) Link {
 // @Success 200 {object} response.ShortenURLResponse "Shorten URL generated successfully"
 // @Failure 400 {object} gin.H "Invalid request body"
 // @Failure 500 {object} gin.H "Internal server error"
-// @Router /links/shorten [post]
+// @Router /v1/links/shorten [post]
 func (h *linkHandler) ShortenURL(c *gin.Context) {
 	var req request.ShortenURLRequest
 
@@ -93,7 +93,7 @@ func (h *linkHandler) ShortenURL(c *gin.Context) {
 // @Success 301 "Redirect successful"
 // @Failure 404 {object} gin.H "Short link not found"
 // @Failure 500 {object} gin.H "Internal server error"
-// @Router /links/redirect/{code} [get]
+// @Router /v1/links/redirect/{code} [get]
 func (h *linkHandler) RedirectToURL(c *gin.Context) {
 	code := c.Param("code")
 

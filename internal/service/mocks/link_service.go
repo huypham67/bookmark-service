@@ -5,7 +5,7 @@ package mocks
 import (
 	"context"
 
-	request "github.com/huypham67/bookmark-management/internal/dto/request"
+	request "github.com/huypham67/bookmark-service/internal/dto/request"
 	mock "github.com/stretchr/testify/mock"
 )
 

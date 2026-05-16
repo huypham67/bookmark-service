@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/huypham67/bookmark-management/internal/dto/response"
-	"github.com/huypham67/bookmark-management/internal/service"
+	_ "github.com/huypham67/bookmark-service/internal/dto/response"
+	"github.com/huypham67/bookmark-service/internal/service"
 	"github.com/rs/zerolog/log"
 )
 
@@ -36,8 +36,7 @@ func NewHealthCheckHandler(healthCheckService service.HealthCheckService) Health
 // @Failure 500 {object} response.HealthCheckResponse
 // @Router /health-check [get]
 func (h *healthCheckHandler) GetHealthCheck(c *gin.Context) {
-	var res response.HealthCheckResponse
-	res = h.healthCheckService.GetStatus()
+	res := h.healthCheckService.GetStatus()
 	if res.Message == "FAILED" {
 		log.Error().
 			Str("message", res.Message).

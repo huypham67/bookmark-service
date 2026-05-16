@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/huypham67/bookmark-management/pkg/redis"
+	"github.com/huypham67/bookmark-service/pkg/redis"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

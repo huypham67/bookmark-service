@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/huypham67/bookmark-management/internal/config"
-	"github.com/huypham67/bookmark-management/internal/dto/response"
+	"github.com/huypham67/bookmark-service/internal/config"
+	"github.com/huypham67/bookmark-service/internal/dto/response"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -73,7 +73,7 @@ func TestHealthCheckEndpoint(t *testing.T) {
 
 			tc.setupRedis(app)
 
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/health-check", nil)
+			req := httptest.NewRequest(http.MethodGet, "/api/health-check", nil)
 			recorder := httptest.NewRecorder()
 			app.Router.ServeHTTP(recorder, req)
 

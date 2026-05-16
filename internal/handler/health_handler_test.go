@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/huypham67/bookmark-management/internal/dto/response"
-	"github.com/huypham67/bookmark-management/internal/service/mocks"
+	"github.com/huypham67/bookmark-service/internal/dto/response"
+	"github.com/huypham67/bookmark-service/internal/service/mocks"
 	"github.com/stretchr/testify/assert"
 )
 

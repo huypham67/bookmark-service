@@ -3,12 +3,12 @@ package integration
 import (
 	"testing"
 
-	"github.com/huypham67/bookmark-management/internal/api"
-	"github.com/huypham67/bookmark-management/internal/handler"
-	"github.com/huypham67/bookmark-management/internal/repository"
-	"github.com/huypham67/bookmark-management/internal/service"
-	"github.com/huypham67/bookmark-management/pkg/redis"
-	"github.com/huypham67/bookmark-management/pkg/utils"
+	"github.com/huypham67/bookmark-service/internal/api"
+	"github.com/huypham67/bookmark-service/internal/handler"
+	"github.com/huypham67/bookmark-service/internal/repository"
+	"github.com/huypham67/bookmark-service/internal/service"
+	"github.com/huypham67/bookmark-service/pkg/redis"
+	"github.com/huypham67/bookmark-service/pkg/utils"
 )
 
 // TestApp represents the test application with its dependencies.
@@ -31,7 +31,7 @@ func setupHealthCheckTestApp(t *testing.T, serviceName string, instanceID string
 	router := api.NewRouter()
 
 	api.RegisterHealthRoutes(
-		router.GroupV1(),
+		router.GroupAPI(),
 		healthHandler,
 	)
 

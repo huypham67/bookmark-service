@@ -27,7 +27,7 @@ func TestRedirectToURLEndpoint(t *testing.T) {
 			name: "should redirect successfully when code exists",
 			code: "abc1234",
 			setupRedis: func(app *TestApp) {
-				app.MockRedis.Server.Set("abc1234", "https://www.google.com")
+				_ = app.MockRedis.Server.Set("abc1234", "https://www.google.com")
 			},
 			expected: expected{
 				statusCode: http.StatusFound,

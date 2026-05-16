@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/huypham67/bookmark-management/internal/handler"
+	"github.com/huypham67/bookmark-service/internal/handler"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -28,17 +28,22 @@ func NewRouter() *Router {
 	}
 }
 
+// GroupAPI returns a router group for API endpoints.
+func (r *Router) GroupAPI() *gin.RouterGroup {
+	return r.engine.Group("/api")
+}
+
 // GroupV1 returns a router group for API version 1 endpoints.
 func (r *Router) GroupV1() *gin.RouterGroup {
-	return r.engine.Group("/api/v1")
+	return r.GroupAPI().Group("/v1")
 }
 
 // RegisterHealthRoutes registers all health-check routes.
 func RegisterHealthRoutes(
-	routerGroup *gin.RouterGroup,
+	apiGroup *gin.RouterGroup,
 	healthCheckHandler handler.HealthCheck,
 ) {
-	routerGroup.GET(
+	apiGroup.GET(
 		"/health-check",
 		healthCheckHandler.GetHealthCheck,
 	)
