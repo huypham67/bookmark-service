@@ -2,7 +2,6 @@ package redis
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -16,7 +15,7 @@ func NewRedisClient(envPrefix string) (*redis.Client, error) {
 	}
 
 	client := redis.NewClient(&redis.Options{
-		Addr:         fmt.Sprintf("%s:%s", config.Host, config.Port),
+		Addr:         config.Addr,
 		Password:     config.Password,
 		DB:           config.Database,
 		PoolSize:     10,
