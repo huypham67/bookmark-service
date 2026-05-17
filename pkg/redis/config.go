@@ -4,8 +4,7 @@ import "github.com/kelseyhightower/envconfig"
 
 // RedisConfig holds the Redis connection configuration.
 type RedisConfig struct {
-	Host     string `envconfig:"REDIS_HOST" default:"127.0.0.1"`
-	Port     string `envconfig:"REDIS_PORT" default:"6379"`
+	Addr     string `envconfig:"REDIS_ADDR" default:"127.0.0.1:6379"`
 	Password string `envconfig:"REDIS_PASSWORD" default:""`
 	Database int    `envconfig:"REDIS_DATABASE" default:"0"`
 }
