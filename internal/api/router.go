@@ -28,9 +28,9 @@ func NewRouter() *Router {
 	}
 }
 
-// GroupAPI returns a router group for API endpoints.
+// GroupAPI returns a router group for endpoints (no /api prefix - handled by API Gateway).
 func (r *Router) GroupAPI() *gin.RouterGroup {
-	return r.engine.Group("/api")
+	return r.engine.Group("/api/bookmark_service")
 }
 
 // GroupV1 returns a router group for API version 1 endpoints.

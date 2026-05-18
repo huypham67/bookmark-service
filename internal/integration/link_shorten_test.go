@@ -91,7 +91,7 @@ func TestShortenURLEndpoint(t *testing.T) {
 			app := setupLinkTestApp(t)
 			tc.setupRedis(app)
 
-			httpRequest := httptest.NewRequest(http.MethodPost, "/api/v1/links/shorten", bytes.NewBufferString(tc.requestBody))
+			httpRequest := httptest.NewRequest(http.MethodPost, "/api/bookmark_service/v1/links/shorten", bytes.NewBufferString(tc.requestBody))
 
 			httpRequest.Header.Set("Content-Type", "application/json")
 			httpRecorder := httptest.NewRecorder()

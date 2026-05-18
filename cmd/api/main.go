@@ -1,16 +1,15 @@
 package main
 
 import (
-	"github.com/huypham67/bookmark-service/docs"
 	"github.com/huypham67/bookmark-service/internal/bootstrap"
 
 	_ "github.com/huypham67/bookmark-service/docs"
 )
 
-// @title Bookmark Management API
+// @title Bookmark Service API
 // @version 1.0
-// @description This is the API documentation for the Bookmark Management service.
-// @BasePath /api
+// @description This is the API documentation for the Bookmark Service
+// @BasePath /api/bookmark_service
 
 // @securityDefinitions.apikey BearerAuth
 // @in header
@@ -20,9 +19,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	docs.SwaggerInfo.Host = ""
-	docs.SwaggerInfo.Schemes = []string{"http", "https"}
 
 	if err := app.Run(); err != nil {
 		panic(err)
