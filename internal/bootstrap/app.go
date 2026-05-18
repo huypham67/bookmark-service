@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"net/http"
 
+	"github.com/huypham67/bookmark-service/docs"
 	"github.com/huypham67/bookmark-service/internal/api"
 	"github.com/huypham67/bookmark-service/internal/config"
 	"github.com/huypham67/bookmark-service/internal/handler"
@@ -37,6 +38,8 @@ func NewApp() (*App, error) {
 
 		return nil, err
 	}
+
+	setupSwaggerConfig(cfg)
 
 	redisClient, err := initRedisClient()
 
@@ -95,6 +98,12 @@ func initLinkHandler(redisClient *redis.Client) handler.Link {
 	linkService := service.NewLinkService(linkRepository, codeGenerator)
 
 	return handler.NewLinkHandler(linkService)
+}
+
+func setupSwaggerConfig(cfg *config.Config) {
+	docs.SwaggerInfo.Host = ""
+	docs.SwaggerInfo.Schemes = []string{"http", "https"}
+	docs.SwaggerInfo.BasePath = cfg.HostName
 }
 
 // Run starts HTTP server.

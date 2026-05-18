@@ -1,4 +1,4 @@
-basePath: /api
+basePath: /api/bookmark_service
 definitions:
   gin.H:
     additionalProperties: {}
@@ -33,8 +33,8 @@ definitions:
     type: object
 info:
   contact: {}
-  description: This is the API documentation for the Bookmark Management service.
-  title: Bookmark Management API
+  description: This is the API documentation for the Bookmark Service
+  title: Bookmark Service API
   version: "1.0"
 paths:
   /health-check:

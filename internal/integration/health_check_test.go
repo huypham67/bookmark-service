@@ -71,7 +71,7 @@ func TestHealthCheckEndpoint(t *testing.T) {
 
 			tc.setupRedis(app)
 
-			req := httptest.NewRequest(http.MethodGet, "/api/health-check", nil)
+			req := httptest.NewRequest(http.MethodGet, "/api/bookmark_service/health-check", nil)
 			recorder := httptest.NewRecorder()
 			app.Router.ServeHTTP(recorder, req)
 

@@ -68,7 +68,7 @@ func TestRedirectToURLEndpoint(t *testing.T) {
 
 			httpRequest := httptest.NewRequest(
 				http.MethodGet,
-				"/api/v1/links/redirect/"+tc.code,
+				"/api/bookmark_service/v1/links/redirect/"+tc.code,
 				nil,
 			)
 

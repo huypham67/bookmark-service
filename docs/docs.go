@@ -193,10 +193,10 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "",
-	BasePath:         "/api",
+	BasePath:         "/api/bookmark_service",
 	Schemes:          []string{},
-	Title:            "Bookmark Management API",
-	Description:      "This is the API documentation for the Bookmark Management service.",
+	Title:            "Bookmark Service API",
+	Description:      "This is the API documentation for the Bookmark Service",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
