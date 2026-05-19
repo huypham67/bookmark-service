@@ -28,5 +28,4 @@ RUN chown -R ${SERVICE_USER}:${SERVICE_GROUP} /app
 
 USER ${SERVICE_USER}
 
-
 CMD ["./bookmark-service"]
