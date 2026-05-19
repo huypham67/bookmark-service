@@ -55,7 +55,7 @@ LDFLAGS = -ldflags "\
 # ============================================================================
 
 DOCKER_REGISTRY     ?= docker.io
-DOCKER_NAMESPACE    ?= huypham67
+DOCKER_NAMESPACE    ?= huypham053
 
 DOCKER_IMAGE        = $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(APP_NAME)
 
@@ -110,8 +110,8 @@ help:
 	@echo "  make dev-quick           Fast development workflow"
 	@echo ""
 	@echo "Testing:"
-	@echo "  make test                Run tests with coverage"
-	@echo "  make test-verbose        Run verbose tests"
+	@echo "  make test                Run tests with coverage (threshold: $(COVERAGE_THRESHOLD)%)"
+	@echo "  make test-verbose        Run verbose tests (threshold: $(COVERAGE_THRESHOLD)%)"
 	@echo "  make test-coverage       Open coverage report"
 	@echo ""
 	@echo "Code Quality:"
@@ -142,6 +142,10 @@ help:
 	@echo "  DOCKER_REGISTRY=<url>    Set Docker registry (default: docker.io)"
 	@echo "  DOCKER_NAMESPACE=<name>  Set Docker namespace (default: huypham67)"
 	@echo "  VERSION=<tag>            Set version tag (default: git describe)"
+	@echo ""
+	@echo "Testing Configuration:"
+	@echo "  COVERAGE_THRESHOLD=<num> Set coverage threshold %% (default: 80)"
+	@echo "                           Example: make test COVERAGE_THRESHOLD=75"
 	@echo ""
 	@echo "Docker Compose:"
 	@echo "  make compose-up          Start full stack"
@@ -194,7 +198,14 @@ test:
 
 	@echo ""
 	@echo "📊 Coverage Summary:"
-	@$(GO) tool cover -func=$(COVERAGE_FILE) | grep total
+	@COVERAGE_PCT=$$($(GO) tool cover -func=$(COVERAGE_FILE) | grep total | awk '{print $$3}' | sed 's/%//'); \
+	echo "Coverage: $$COVERAGE_PCT%"; \
+	if [ "$$(echo "$$COVERAGE_PCT < $(COVERAGE_THRESHOLD)" | bc -l)" -eq 1 ]; then \
+		echo "❌ Coverage ($$COVERAGE_PCT%) is below threshold ($(COVERAGE_THRESHOLD)%)"; \
+		exit 1; \
+	else \
+		echo "✅ Coverage ($$COVERAGE_PCT%) meets threshold ($(COVERAGE_THRESHOLD)%)"; \
+	fi
 
 .PHONY: test-verbose
 test-verbose:
@@ -207,6 +218,19 @@ test-verbose:
 		-covermode=atomic \
 		-coverpkg=./internal/... \
 		-p 1
+
+	@grep -vE "$(COVERAGE_EXCLUDE)" $(COVERAGE_TMP) > $(COVERAGE_FILE) || touch $(COVERAGE_FILE)
+
+	@echo ""
+	@echo "📊 Coverage Summary:"
+	@COVERAGE_PCT=$$($(GO) tool cover -func=$(COVERAGE_FILE) | grep total | awk '{print $$3}' | sed 's/%//'); \
+	echo "Coverage: $$COVERAGE_PCT%"; \
+	if [ "$$(echo "$$COVERAGE_PCT < $(COVERAGE_THRESHOLD)" | bc -l)" -eq 1 ]; then \
+		echo "❌ Coverage ($$COVERAGE_PCT%) is below threshold ($(COVERAGE_THRESHOLD)%)"; \
+		exit 1; \
+	else \
+		echo "✅ Coverage ($$COVERAGE_PCT%) meets threshold ($(COVERAGE_THRESHOLD)%)"; \
+	fi
 
 .PHONY: test-coverage
 test-coverage: test

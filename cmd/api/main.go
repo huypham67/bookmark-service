@@ -7,9 +7,8 @@ import (
 )
 
 // @title Bookmark Service API
-// @version 1.0
+// @version 1.1
 // @description This is the API documentation for the Bookmark Service
-// @BasePath /api/bookmark_service
 
 // @securityDefinitions.apikey BearerAuth
 // @in header
