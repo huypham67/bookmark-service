@@ -4,7 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	// Response DTO is imported for Swagger documentation purposes, even though it's not directly used in the code.
 	_ "github.com/huypham67/bookmark-service/internal/dto/response"
+
 	"github.com/huypham67/bookmark-service/internal/service"
 	"github.com/rs/zerolog/log"
 )
@@ -15,11 +18,11 @@ type HealthCheck interface {
 }
 
 type healthCheckHandler struct {
-	healthCheckService service.HealthCheckService
+	healthCheckService service.HealthCheck
 }
 
 // NewHealthCheckHandler creates a new health check handler with the given health check service.
-func NewHealthCheckHandler(healthCheckService service.HealthCheckService) HealthCheck {
+func NewHealthCheckHandler(healthCheckService service.HealthCheck) HealthCheck {
 	return &healthCheckHandler{
 		healthCheckService: healthCheckService,
 	}

@@ -11,8 +11,8 @@ import (
 const statusMessage = "OK"
 const failedStatusMessage = "FAILED"
 
-// HealthCheckService defines the contract for health check services.
-type HealthCheckService interface {
+// HealthCheck defines the contract for health check services.
+type HealthCheck interface {
 	GetStatus(ctx context.Context) response.HealthCheckResponse
 }
 
@@ -23,7 +23,7 @@ type healthCheckService struct {
 }
 
 // NewHealthCheckService creates a new health check service.
-func NewHealthCheckService(serviceName string, instanceID string, pinger repository.Pinger) HealthCheckService {
+func NewHealthCheckService(serviceName string, instanceID string, pinger repository.Pinger) HealthCheck {
 	return &healthCheckService{
 		serviceName: serviceName,
 		instanceID:  instanceID,

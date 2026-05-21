@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/huypham67/bookmark-service/internal/bootstrap"
 
+	// Docs package is required to automatically register Swagger documentation via its init() function.
 	_ "github.com/huypham67/bookmark-service/docs"
 )
 

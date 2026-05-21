@@ -1,68 +1,58 @@
 # ============================================================================
-# APPLICATION VARIABLES
+# 1. CORE VARIABLES (Cấu hình hệ thống hệ mặt trời)
 # ============================================================================
-APP_NAME        = bookmark-service
-CMD_PATH        = ./cmd/api/main.go
-MAIN_PACKAGE    = github.com/huypham67/bookmark-service
-BIN_DIR         = ./bin
-DOCS_DIR        = ./docs
+APP_NAME           = bookmark-service
+CMD_PATH           = ./cmd/api/main.go
+MAIN_PACKAGE       = github.com/huypham67/bookmark-service
+BIN_DIR            = ./bin
+DOCS_DIR           = ./docs
 
-# ============================================================================
-# VERSIONING & GIT CONTEXT
-# ============================================================================
-VERSION     ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-COMMIT      ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-BUILD_TIME  ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
+# Git Context Execution (Local fallback vs CI injections)
+VERSION           ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT            ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_TIME        ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 
-# Nâng cao: Đồng bộ hóa biến GitHub Actions truyền sang và biến Local chạy bằng tay
-GIT_SHA        ?= $(COMMIT)
-GIT_EVENT_NAME ?= local
-GIT_REF_TYPE   ?= branch
-GIT_REF_NAME   ?= $(VERSION)
+GIT_SHA           ?= $(COMMIT)
+GIT_EVENT_NAME    ?= local
+GIT_REF_TYPE      ?= branch
+GIT_REF_NAME      ?= $(VERSION)
 
-# ============================================================================
-# GO CONFIGURATION
-# ============================================================================
-GO              = go
-GOTEST          = go test
-GOLINT          = golangci-lint
-CGO_ENABLED     = 0
+# Go Toolchain Parameters
+GO                 = go
+GOTEST             = go test
+GOLINT             = golangci-lint
+CGO_ENABLED        = 0
+LDFLAGS            = -ldflags "-s -w \
+                     -X main.Version=$(VERSION) \
+                     -X main.Commit=$(COMMIT) \
+                     -X main.BuildTime=$(BUILD_TIME)"
 
-LDFLAGS = -ldflags "\
-    -s -w \
-    -X main.Version=$(VERSION) \
-    -X main.Commit=$(COMMIT) \
-    -X main.BuildTime=$(BUILD_TIME)"
-
-# ============================================================================
-# DOCKER & COVERAGE CONFIGURATION (Đồng bộ một mối sạch sẽ)
-# ============================================================================
+# Docker Registry & Infrastructure Targets
 DOCKER_REGISTRY   ?= docker.io
 DOCKER_NAMESPACE  ?= huypham053
-DOCKER_IMAGE      = $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(APP_NAME)
-DOCKER_CONTAINER  = $(APP_NAME)
+DOCKER_IMAGE       = $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(APP_NAME)
+DOCKER_CONTAINER   = $(APP_NAME)
 
+# Quality Gates & Verification Layers
 COVERAGE_FOLDER   ?= coverage_report
-COVERAGE_EXCLUDE  ?= mocks|main.go|_test.go|docs|bootstrap|config
+COVERAGE_EXCLUDE  ?= "mocks|main.go|_test.go|docs|bootstrap|config|logger|redis"
 COVERAGE_THRESHOLD ?= 80
 
-# ============================================================================
-# DEFAULT TARGET
-# ============================================================================
-.DEFAULT_GOAL := help
+# System Default Gate
+.DEFAULT_GOAL     := help
 
 # ============================================================================
-# HELPER FUNCTIONS (Build đa nền tảng)
+# 2. INTERNAL MACROS / HELPER FUNCTIONS
 # ============================================================================
 define go-build
-    @echo "🚀 Building $(APP_NAME) for $(1)/$(2)..."
-    @mkdir -p $(BIN_DIR)
-    CGO_ENABLED=$(CGO_ENABLED) GOOS=$(1) GOARCH=$(2) $(GO) build $(4) $(LDFLAGS) -o $(BIN_DIR)/$(APP_NAME)-$(1)-$(2)$(3) $(CMD_PATH)
-    @echo "✅ Binary created: $(BIN_DIR)/$(APP_NAME)-$(1)-$(2)$(3)"
+	@echo "🚀 Building $(APP_NAME) for $(1)/$(2)..."
+	@mkdir -p $(BIN_DIR)
+	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(1) GOARCH=$(2) $(GO) build $(4) $(LDFLAGS) -o $(BIN_DIR)/$(APP_NAME)-$(1)-$(2)$(3) $(CMD_PATH)
+	@echo "✅ Binary created: $(BIN_DIR)/$(APP_NAME)-$(1)-$(2)$(3)"
 endef
 
 # ============================================================================
-# HELP SYSTEM
+# 3. INTERACTIVE DOCUMENTATION (Help UI)
 # ============================================================================
 .PHONY: help
 help:
@@ -70,34 +60,32 @@ help:
 	@echo "================================================================="
 	@echo " 📑 Bookmark Service API - Elite Production Makefile"
 	@echo "================================================================="
-	@echo "Development:"
-	@echo "  make run                 Run application locally"
-	@echo "  make dev                 Full development workflow (fmt, vet, test, swagger, run)"
-	@echo "Testing & Quality:"
-	@echo "  make test                Run tests locally with coverage check"
-	@echo "  make fmt | make vet      Format and vet source code"
-	@echo "  make lint | make tidy    Run linter and tidy go.mod"
-	@echo "Build & Release:"
-	@echo "  make build               Build binary for current OS"
-	@echo "  make release             Build release binaries for Linux, macOS, Windows"
-	@echo "Docker Pipeline (Local & CI/CD):"
-	@echo "  make docker-test         Run tests inside Docker Sandbox (Outputs coverage)"
-	@echo "  make docker-login        Log in to Docker registry securely"
-	@echo "  make docker-build-push   Smart Build & Push using Buildx (Auto-detects PR/Release)"
-	@echo "Docker Local Utilities:"
-	@echo "  make docker-run | stop   Run/Stop application in local Docker container"
-	@echo "  make docker-logs | clean Show container logs / Full cleanup Docker resources"
-	@echo "Docker Compose:"
-	@echo "  make compose-up | down   Start/Stop full development stack"
+	@echo "Development Workflow:"
+	@echo "  make run                 Run application locally with dynamic reload"
+	@echo "  make dev                 Trigger complete local cycle (fmt -> vet -> test -> run)"
+	@echo "Testing & Linting Core:"
+	@echo "  make test                Execute local tests + HTML report visualization"
+	@echo "  make fmt | make vet      Execute code style formatting and analysis"
+	@echo "  make lint | make tidy    Execute strict golangci-lint and mod verification"
+	@echo "Compilation Layers:"
+	@echo "  make build               Compile binary optimization for Current Host OS"
+	@echo "  make release             Compile cross-platform artifacts (Linux, Mac, Win)"
+	@echo "Universal Ops Pipeline (CI/CD):"
+	@echo "  make docker-test         Isolate execution test loop inside Buildx Container"
+	@echo "  make docker-sonar        Execute SonarCloud SAST Security validation"
+	@echo "  make docker-build-push   Automated contextual Buildx engine (Detects PR/Release)"
+	@echo "Local Virtualization Infrastructure:"
+	@echo "  make docker-run | stop   Spin up / Kill localized single-container target"
+	@echo "  make compose-up | down   Orchestrate multi-dependency stack (Redis, Nginx, App)"
 	@echo "================================================================="
 
 # ============================================================================
-# DEVELOPMENT & QUALITY TARGETS
+# 4. STANDARD APPLICATION ROAD (Local Dev)
 # ============================================================================
 .PHONY: run dev fmt vet lint tidy vendor
 run:
 	@echo "🚀 Starting application..."
-	SERVICE_NAME=bookmark-service $(GO) run $(CMD_PATH)
+	SERVICE_NAME=$(APP_NAME) $(GO) run $(CMD_PATH)
 
 dev: fmt vet test swagger run
 
@@ -124,7 +112,7 @@ vendor:
 	$(GO) mod vendor
 
 # ============================================================================
-# LOCAL TESTING TARGETS
+# 5. VERIFICATION & QUALITY LAYER (Local Machine Validation)
 # ============================================================================
 .PHONY: test test-coverage
 test:
@@ -132,14 +120,14 @@ test:
 	@$(GO) clean -testcache
 	@mkdir -p $(COVERAGE_FOLDER)
 	@$(GO) test ./... -coverprofile=$(COVERAGE_FOLDER)/coverage.tmp -covermode=atomic -coverpkg=./internal/... -p 1
-	@grep -vE "$(COVERAGE_EXCLUDE)" $(COVERAGE_FOLDER)/coverage.tmp > $(COVERAGE_FOLDER)/coverage.out || touch $(COVERAGE_FOLDER)/coverage.out
+	@grep -vE $(COVERAGE_EXCLUDE) $(COVERAGE_FOLDER)/coverage.tmp > $(COVERAGE_FOLDER)/coverage.out || touch $(COVERAGE_FOLDER)/coverage.out
 	@$(GO) tool cover -html=$(COVERAGE_FOLDER)/coverage.out -o $(COVERAGE_FOLDER)/coverage.html
 	@echo ""
-	@echo "📊 Checking coverage threshold..."
-	@total=$$($(GO) tool cover -func=$(COVERAGE_FOLDER)/coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	@echo "📊 Analyzing coverage data criteria..."
+	@total=$$(go tool cover -func=$(COVERAGE_FOLDER)/coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
 	echo "Total Coverage: $$total%"; \
 	if [ $$(echo "$$total < $(COVERAGE_THRESHOLD)" | bc -l) -eq 1 ]; then \
-	   echo "❌ FAIL: Coverage ($$total%) is below threshold ($(COVERAGE_THRESHOLD)%)"; \
+	   echo "❌ FAIL: Coverage ($$total%) is below required threshold ($(COVERAGE_THRESHOLD)%)"; \
 	   exit 1; \
 	else \
 	   echo "✅ PASS: Coverage ($$total%) meets threshold ($(COVERAGE_THRESHOLD)%)"; \
@@ -150,11 +138,11 @@ test-coverage: test
 	$(GO) tool cover -html=$(COVERAGE_FOLDER)/coverage.out
 
 # ============================================================================
-# LOCAL & CROSS-COMPILATION BUILD TARGETS
+# 6. COMPILATION ARCHITECTURE (Local Binaries)
 # ============================================================================
 .PHONY: build build-linux build-macos build-windows build-prod release
 build:
-	@echo "🏗️ Building application..."
+	@echo "🏗️ Building application binary..."
 	@mkdir -p $(BIN_DIR)
 	$(GO) build $(LDFLAGS) -o $(BIN_DIR)/$(APP_NAME) $(CMD_PATH)
 	@echo "✅ Build completed: $(BIN_DIR)/$(APP_NAME)"
@@ -171,87 +159,103 @@ build-windows:
 build-prod:
 	$(call go-build,linux,amd64,-prod,-trimpath)
 	@echo ""
-	@echo "📦 Production binary size:"
+	@echo "📦 Production binary size optimization profile:"
 	@ls -lh $(BIN_DIR)/$(APP_NAME)-linux-amd64-prod
 
 release: clean build-linux build-macos build-windows
-	@echo "📦 Creating release checksums..."
-	@cd $(BIN_DIR) && sha256sum * > checksums.txt 2>/dev/null || echo "checksums created"
+	@echo "📦 Generating SHA256 checksum signatures..."
+	@cd $(BIN_DIR) && sha256sum * > checksums.txt 2>/dev/null || echo "Checksum database initialized."
 	@echo ""
-	@echo "✅ Release artifacts:"
+	@echo "✅ Complete release package ready:"
 	@ls -lh $(BIN_DIR)
 
 # ============================================================================
-# ELITE DOCKER PIPELINE TARGETS (Sạch 100% cho cả Local lẫn GitHub Actions)
+# 7. HIGH-TIER CLOUD PIPELINE TARGETS (Docker Sandbox, Sonar & Buildx)
 # ============================================================================
-.PHONY: docker-test docker-login docker-build-push
+.PHONY: docker-test docker-login docker-build-push docker-sonar
 
 docker-test:
-	@echo "🧪 [SANDBOX] Running tests inside clean Docker container..."
+	@echo "🧪 Executing isolated test suite within Docker Buildx environment..."
 	@mkdir -p $(COVERAGE_FOLDER)
 	docker buildx build \
-		--build-arg COVERAGE_EXCLUDE="$(COVERAGE_EXCLUDE)" \
+		--build-arg COVERAGE_EXCLUDE=$(COVERAGE_EXCLUDE) \
 		--target test \
 		--output type=local,dest=$(COVERAGE_FOLDER) .
 	@echo ""
-	@echo "📊 [SANDBOX] Analyzing coverage report from Docker..."
+	@echo "📊 Evaluating sandbox coverage results..."
 	@if [ -f $(COVERAGE_FOLDER)/coverage.out ]; then \
 		total=$$(go tool cover -func=$(COVERAGE_FOLDER)/coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
-		echo "Sandbox Coverage: $$total%"; \
+		echo "Sandbox Target Coverage: $$total%"; \
 		if [ $$(echo "$$total < $(COVERAGE_THRESHOLD)" | bc -l) -eq 1 ]; then \
-			echo "❌ FAIL: Sandbox Coverage ($$total%) is below threshold ($(COVERAGE_THRESHOLD)%)"; \
+			echo "❌ FAIL: Sandbox Coverage ($$total%) drops below quality gate ($(COVERAGE_THRESHOLD)%)"; \
 			exit 1; \
 		else \
-			echo "✅ PASS: Sandbox Coverage ($$total%) meets threshold ($(COVERAGE_THRESHOLD)%)"; \
+			echo "✅ PASS: Sandbox Coverage ($$total%) verified successfully!"; \
 		fi \
 	else \
-		echo "❌ Error: Coverage output data not found!"; \
+		echo "❌ Error: Coverage synchronization lost. Output asset missing."; \
 		exit 1; \
 	fi
 
 docker-login:
-	@echo "🔐 Securely logging in to Docker Registry..."
+	@echo "🔐 Securely initializing Docker Hub Authentication..."
 	@if [ -z "$(DOCKERHUB_USERNAME)" ] || [ -z "$(DOCKERHUB_TOKEN)" ]; then \
-		echo "❌ Error: DOCKERHUB_USERNAME or DOCKERHUB_TOKEN environment variables are missing!"; \
+		echo "❌ Error: Active credentials missing from environment context!"; \
 		exit 1; \
 	fi
 	@echo "$(DOCKERHUB_TOKEN)" | docker login -u "$(DOCKERHUB_USERNAME)" --password-stdin
 
 docker-build-push:
-	@echo "📦 [PIPELINE] Analyzing Git Context for Containerization..."
+	@echo "📦 [PIPELINE] Evaluating context for secure container deployment..."
 	@if [ "$(GIT_REF_TYPE)" = "tag" ]; then \
-		IMG_TAG="$(GIT_REF_NAME)"; \
+		echo "::notice title=Docker Buildx::🏷️ [Release] Tagging as: $(GIT_REF_NAME) + latest"; \
+		docker buildx build \
+			--target final \
+			--push=true \
+			-t $(DOCKER_IMAGE):$(GIT_REF_NAME) \
+			-t $(DOCKER_IMAGE):latest .; \
+	elif [ "$(GIT_EVENT_NAME)" = "pull_request" ]; then \
+		echo "::notice title=Docker Buildx::▶️ [PR Mode] Build only. NO PUSH"; \
+		docker buildx build \
+			--target final \
+			--push=false \
+			-t $(DOCKER_IMAGE):test .; \
 	else \
-		IMG_TAG=$$(echo "$(GIT_SHA)" | cut -c1-7); \
-	fi; \
-	\
-	if [ "$(GIT_EVENT_NAME)" = "pull_request" ]; then \
-		DOCKER_PUSH="false"; \
-		echo "▶️ [PR Mode] Verification Build triggered. IMAGE WILL NOT BE PUSHED."; \
-	else \
-		DOCKER_PUSH="true"; \
-		echo "🚀 [Release Mode] Production Build triggered. TARGET TAG: $$IMG_TAG"; \
-	fi; \
-	\
-	docker buildx build \
-		--target final \
-		--push=$$DOCKER_PUSH \
-		-t $(DOCKER_IMAGE):$$IMG_TAG \
-		-t $(DOCKER_IMAGE):$(COMMIT) \
-		-t $(DOCKER_IMAGE):latest .
+		SHORT_SHA=$$(echo "$(GIT_SHA)" | cut -c1-7); \
+		echo "::notice title=Docker Buildx::🚀 [Main] Tagging as: main + $$SHORT_SHA + latest"; \
+		docker buildx build \
+			--target final \
+			--push=true \
+			-t $(DOCKER_IMAGE):main \
+			-t $(DOCKER_IMAGE):$$SHORT_SHA \
+			-t $(DOCKER_IMAGE):latest .; \
+	fi
+
+docker-sonar:
+	@echo "🔍 [SONAR] Initiating Cloud Vulnerability & Code Smell Scan..."
+	@if [ -z "$(SONAR_TOKEN)" ]; then \
+		echo "❌ Error: Scan blocked. SONAR_TOKEN context variable is missing!"; \
+		exit 1; \
+	fi
+	@docker pull --quiet sonarsource/sonar-scanner-cli:11 || true
+	docker run --rm \
+		-e SONAR_TOKEN=$(SONAR_TOKEN) \
+		-e SONAR_HOST_URL=https://sonarcloud.io \
+		-v "$(PWD):/usr/src" \
+		sonarsource/sonar-scanner-cli:11
 
 # ============================================================================
-# DOCKER LOCAL UTILITIES (Dành riêng cho Dev chạy kiểm thử ở máy cá nhân)
+# 8. LOCAL DESKTOP DOCKER UTILITIES (Chạy nhanh một container)
 # ============================================================================
 .PHONY: docker-run docker-stop docker-logs docker-shell docker-clean
 
 docker-run:
-	@echo "🚀 Running local container instance..."
+	@echo "🚀 Launching local detached container instance..."
 	docker run -d --name $(DOCKER_CONTAINER) -p 8080:8080 --env-file .env $(DOCKER_IMAGE):latest
-	@echo "✅ Container successfully spawned. Port mapped to 8080."
+	@echo "✅ Instance deployed successfully. Traffic mapping enabled on port 8080."
 
 docker-stop:
-	@echo "🛑 Stopping container instance..."
+	@echo "🛑 Destroying localized runtime stack..."
 	-docker stop $(DOCKER_CONTAINER)
 	-docker rm $(DOCKER_CONTAINER)
 
@@ -262,12 +266,12 @@ docker-shell:
 	docker exec -it $(DOCKER_CONTAINER) sh
 
 docker-clean:
-	@echo "🧹 Wiping docker local build images..."
+	@echo "🧹 Executing full structural cache purge..."
 	-docker rm -f $(DOCKER_CONTAINER)
 	-docker rmi -f $$(docker images -q $(DOCKER_IMAGE) 2>/dev/null) 2>/dev/null || true
 
 # ============================================================================
-# DOCKER COMPOSE TARGETS
+# 9. INTEGRATED ORCHESTRATION (Docker Compose)
 # ============================================================================
 .PHONY: compose-up compose-down compose-logs compose-restart
 compose-up:
@@ -280,12 +284,12 @@ compose-restart:
 	docker compose down && docker compose up --build -d
 
 # ============================================================================
-# UTILITIES & SWAGGER
+# 10. SYSTEM UTILITIES & METADATA INFRASTRUCTURE
 # ============================================================================
 .PHONY: swagger install-tools info clean clean-docs clean-all
 swagger:
-	@echo "📘 Generating Swagger documentation..."
-	@which swag > /dev/null || (echo "❌ swag not installed. Run: make install-tools"; exit 1)
+	@echo "📘 Compiling API Swagger reference system..."
+	@which swag > /dev/null || (echo "❌ System Error: Executable 'swag' dependency missing. Run: make install-tools"; exit 1)
 	swag init --parseDependency --parseInternal --generalInfo $(CMD_PATH) --output $(DOCS_DIR)
 
 install-tools:
@@ -293,11 +297,11 @@ install-tools:
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 info:
-	@echo "App Name:      $(APP_NAME)"
-	@echo "Version:       $(VERSION)"
-	@echo "Commit:        $(COMMIT)"
-	@echo "Build Time:    $(BUILD_TIME)"
-	@echo "Go Version:    $$($(GO) version)"
+	@echo "App Tracking Identity: $(APP_NAME)"
+	@echo "SemVer Version:        $(VERSION)"
+	@echo "Commit Hash Signature: $(COMMIT)"
+	@echo "Compilation Time:      $(BUILD_TIME)"
+	@echo "Host Runtime Engine:   $$($(GO) version)"
 
 clean:
 	rm -rf $(BIN_DIR) $(COVERAGE_FOLDER)
