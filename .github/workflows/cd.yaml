@@ -1,0 +1,38 @@
+name: cd-pipeline
+
+on:
+  workflow_call:
+    inputs:
+      target_env:
+        required: true
+        type: string
+      image_tag:
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Announce Deployment
+        run: |
+          echo "::notice title=CD Status::Deploy to [${{ inputs.target_env }}] with image tag [${{ inputs.image_tag }}]"
+
+      - name: Deploy Application
+        working-directory: /opt/bookmark-system
+        run: |
+          set -e
+
+          echo "TAG=${{ inputs.image_tag }}" > .env
+
+          echo "Pull latest image..."
+          docker compose pull bookmark-service
+
+          echo "Recreate service..."
+          docker compose up -d --force-recreate bookmark-service
+
+          echo "Cleanup unused images..."
+          docker image prune -f
+
+          echo "Deployment completed successfully"
