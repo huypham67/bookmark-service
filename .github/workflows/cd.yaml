@@ -14,14 +14,16 @@ jobs:
     steps:
       - name: Deploy Application
         working-directory: /opt/bookmark-system
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
           set -e
 
-          echo "TAG=${{ inputs.image_tag }}" > .env
+          echo "TAG=${IMAGE_TAG}" > .env
           
-          echo "::notice title=CD Status::🚀 Deploying with image tag: [${{ inputs.image_tag }}]"
+          echo "::notice title=CD Status::🚀 Deploying with image tag: [${IMAGE_TAG}]"
 
-          echo "Pulling image: bookmark-service:${{ inputs.image_tag }}..."
+          echo "Pulling image: bookmark-service:${IMAGE_TAG}..."
           docker compose pull bookmark-service
 
           echo "Recreating service..."
