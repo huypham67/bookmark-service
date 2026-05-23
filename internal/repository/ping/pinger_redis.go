@@ -1,4 +1,4 @@
-package repository
+package ping
 
 import (
 	"context"

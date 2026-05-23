@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/huypham67/bookmark-service/internal/dto/response"
-	"github.com/huypham67/bookmark-service/internal/repository"
+	"github.com/huypham67/bookmark-service/internal/repository/ping"
 	"github.com/rs/zerolog/log"
 )
 
@@ -19,11 +19,11 @@ type HealthCheck interface {
 type healthCheckService struct {
 	serviceName string
 	instanceID  string
-	pinger      repository.Pinger
+	pinger      ping.Pinger
 }
 
 // NewHealthCheckService creates a new health check service.
-func NewHealthCheckService(serviceName string, instanceID string, pinger repository.Pinger) HealthCheck {
+func NewHealthCheckService(serviceName string, instanceID string, pinger ping.Pinger) HealthCheck {
 	return &healthCheckService{
 		serviceName: serviceName,
 		instanceID:  instanceID,
