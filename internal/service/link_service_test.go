@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLinkService_ShortenURL(t *testing.T) {
+func TestLink_ShortenURL(t *testing.T) {
 	t.Parallel()
 
 	type args struct {
@@ -207,7 +207,7 @@ func TestLinkService_ShortenURL(t *testing.T) {
 	}
 }
 
-func TestLinkService_GetOriginalURL(t *testing.T) {
+func TestLink_GetOriginalURL(t *testing.T) {
 	t.Parallel()
 
 	type args struct {

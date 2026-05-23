@@ -25,7 +25,7 @@ func TestLinkHandler_ShortenURL(t *testing.T) {
 	testCases := []struct {
 		name        string
 		requestBody string
-		setupMock   func(context.Context, *mocks.LinkService)
+		setupMock   func(context.Context, *mocks.Link)
 		expected    expected
 	}{
 		{
@@ -34,7 +34,7 @@ func TestLinkHandler_ShortenURL(t *testing.T) {
 				"url": "https://www.google.com",
 				"exp": 3600
 			}`,
-			setupMock: func(ctx context.Context, mockService *mocks.LinkService) {
+			setupMock: func(ctx context.Context, mockService *mocks.Link) {
 				mockService.
 					On(
 						"ShortenURL",
@@ -57,7 +57,7 @@ func TestLinkHandler_ShortenURL(t *testing.T) {
 				"url": "invalid-url",
 				"exp": 3600
 			}`,
-			setupMock: func(ctx context.Context, mockService *mocks.LinkService) {
+			setupMock: func(ctx context.Context, mockService *mocks.Link) {
 				// No need to set up mock for validation failure
 			},
 			expected: expected{
@@ -70,7 +70,7 @@ func TestLinkHandler_ShortenURL(t *testing.T) {
 				"url": "https://www.google.com",
 				"exp": 3600
 			}`,
-			setupMock: func(ctx context.Context, mockService *mocks.LinkService) {
+			setupMock: func(ctx context.Context, mockService *mocks.Link) {
 				mockService.
 					On(
 						"ShortenURL",
@@ -97,7 +97,7 @@ func TestLinkHandler_ShortenURL(t *testing.T) {
 			t.Parallel()
 
 			gin.SetMode(gin.TestMode)
-			mockSvc := mocks.NewLinkService(t)
+			mockSvc := mocks.NewLink(t)
 
 			recorder := httptest.NewRecorder()
 
@@ -140,13 +140,13 @@ func TestLinkHandler_RedirectToURL(t *testing.T) {
 	testCases := []struct {
 		name      string
 		code      string
-		setupMock func(context.Context, *mocks.LinkService)
+		setupMock func(context.Context, *mocks.Link)
 		expected  expected
 	}{
 		{
 			name: "should redirect to original URL successfully",
 			code: "abc1234",
-			setupMock: func(ctx context.Context, mockService *mocks.LinkService) {
+			setupMock: func(ctx context.Context, mockService *mocks.Link) {
 				mockService.
 					On(
 						"GetOriginalURL",
@@ -164,7 +164,7 @@ func TestLinkHandler_RedirectToURL(t *testing.T) {
 		{
 			name: "should return 404 when shorten code does not exist",
 			code: "missing",
-			setupMock: func(ctx context.Context, mockService *mocks.LinkService) {
+			setupMock: func(ctx context.Context, mockService *mocks.Link) {
 				mockService.
 					On(
 						"GetOriginalURL",
@@ -186,7 +186,7 @@ func TestLinkHandler_RedirectToURL(t *testing.T) {
 			t.Parallel()
 
 			gin.SetMode(gin.TestMode)
-			mockSvc := mocks.NewLinkService(t)
+			mockSvc := mocks.NewLink(t)
 
 			recorder := httptest.NewRecorder()
 			ctx, _ := gin.CreateTestContext(recorder)
