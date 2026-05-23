@@ -65,6 +65,17 @@ func RegisterLinkRoutes(
 	)
 }
 
+// RegisterUserRoutes registers all user management routes.
+func RegisterUserRoutes(
+	routerGroup *gin.RouterGroup,
+	userHandler handler.User,
+) {
+	routerGroup.POST(
+		"/users/register",
+		userHandler.Register,
+	)
+}
+
 // ServeHTTP implements the http.Handler interface.
 func (r *Router) ServeHTTP(
 	writer http.ResponseWriter,

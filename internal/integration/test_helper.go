@@ -6,6 +6,7 @@ import (
 	"github.com/huypham67/bookmark-service/internal/api"
 	"github.com/huypham67/bookmark-service/internal/handler"
 	"github.com/huypham67/bookmark-service/internal/repository"
+	"github.com/huypham67/bookmark-service/internal/repository/ping"
 	"github.com/huypham67/bookmark-service/internal/service"
 	"github.com/huypham67/bookmark-service/pkg/redis"
 	"github.com/huypham67/bookmark-service/pkg/utils"
@@ -22,7 +23,7 @@ func setupHealthCheckTestApp(t *testing.T, serviceName string, instanceID string
 
 	mockRedis := redis.NewMockRedis(t)
 
-	pinger := repository.NewPinger(mockRedis.Client)
+	pinger := ping.NewPinger(mockRedis.Client)
 
 	healthService := service.NewHealthCheckService(serviceName, instanceID, pinger)
 
