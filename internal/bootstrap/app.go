@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/huypham67/bookmark-service/docs"
 	"github.com/huypham67/bookmark-service/internal/api"
@@ -142,8 +143,30 @@ func initLinkHandler(redisClient *redis.Client) handler.Link {
 
 func setupSwaggerConfig(cfg *config.Config) {
 	docs.SwaggerInfo.Host = ""
-	docs.SwaggerInfo.Schemes = []string{"http", "https"}
+	docs.SwaggerInfo.Schemes = getSwaggerSchemes(cfg)
 	docs.SwaggerInfo.BasePath = cfg.HostName
+}
+
+func getSwaggerSchemes(cfg *config.Config) []string {
+	if cfg.SwaggerSchemes != "" {
+		return parseSchemes(cfg.SwaggerSchemes)
+	}
+
+	if cfg.Environment == "production" {
+		return []string{"https"}
+	}
+
+	return []string{"http"}
+}
+
+func parseSchemes(schemesStr string) []string {
+	schemes := make([]string, 0)
+	for _, scheme := range strings.Split(schemesStr, ",") {
+		if trimmed := strings.TrimSpace(scheme); trimmed != "" {
+			schemes = append(schemes, trimmed)
+		}
+	}
+	return schemes
 }
 
 // Run starts HTTP server.
