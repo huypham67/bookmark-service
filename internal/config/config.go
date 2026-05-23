@@ -9,10 +9,12 @@ import (
 
 // Config holds the application configuration loaded from environment variables.
 type Config struct {
-	AppPort     string `envconfig:"APP_PORT" default:"8080"`
-	ServiceName string `envconfig:"SERVICE_NAME" required:"true"`
-	InstanceID  string `envconfig:"INSTANCE_ID"`
-	HostName    string `envconfig:"APP_HOST_NAME" default:"/api/bookmark_service"`
+	AppPort        string `envconfig:"APP_PORT" default:"8080"`
+	ServiceName    string `envconfig:"SERVICE_NAME" required:"true"`
+	InstanceID     string `envconfig:"INSTANCE_ID"`
+	HostName       string `envconfig:"APP_HOST_NAME" default:"/api/bookmark_service"`
+	Environment    string `envconfig:"APP_ENV" default:"development"`
+	SwaggerSchemes string `envconfig:"SWAGGER_SCHEMES" default:""`
 }
 
 // LoadConfig loads application configuration from environment variables.

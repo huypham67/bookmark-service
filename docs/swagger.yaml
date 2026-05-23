@@ -68,8 +68,6 @@ definitions:
         type: string
       id:
         type: string
-      updated_at:
-        type: string
       username:
         type: string
     type: object
