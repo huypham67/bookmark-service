@@ -17,11 +17,11 @@ type Link interface {
 }
 
 type linkHandler struct {
-	linkService service.LinkService
+	linkService service.Link
 }
 
 // NewLinkHandler creates a new link handler with the given link service.
-func NewLinkHandler(linkService service.LinkService) Link {
+func NewLinkHandler(linkService service.Link) Link {
 	return &linkHandler{
 		linkService: linkService,
 	}

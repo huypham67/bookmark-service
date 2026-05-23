@@ -9,8 +9,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// LinkService defines the contract for link services.
-type LinkService interface {
+// Link defines the contract for link services.
+type Link interface {
 	ShortenURL(ctx context.Context, request request.ShortenURLRequest) (string, error)
 	GetOriginalURL(ctx context.Context, code string) (string, error)
 }
@@ -21,7 +21,7 @@ type linkService struct {
 }
 
 // NewLinkService creates a new link service with the given repository and code generator.
-func NewLinkService(linkRepo repository.Link, codeGenerator utils.CodeGenerator) LinkService {
+func NewLinkService(linkRepo repository.Link, codeGenerator utils.CodeGenerator) Link {
 	return &linkService{
 		linkRepo:      linkRepo,
 		codeGenerator: codeGenerator,
