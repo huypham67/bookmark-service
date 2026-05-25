@@ -35,8 +35,11 @@ DOCKER_CONTAINER   = $(APP_NAME)
 
 # Quality Gates & Verification Layers
 COVERAGE_FOLDER   ?= coverage_report
-COVERAGE_EXCLUDE  ?= "mocks|main.go|_test.go|docs|bootstrap|config|logger|redis"
+COVERAGE_EXCLUDE  ?= "mocks|main.go|_test.go|docs|bootstrap|config|logger|redis|sqldb"
 COVERAGE_THRESHOLD ?= 80
+
+# SonarCloud SAST Exclusion Patterns
+SONAR_EXCLUDE     ?= "**/*_test.go,**/vendor/**,**/mocks/**,docs/**,bin/**,$(COVERAGE_FOLDER)/**,**/logger/**,**/redis/**,**/sqldb/**"
 
 # System Default Gate
 .DEFAULT_GOAL     := help
@@ -242,7 +245,8 @@ docker-sonar:
 		-e SONAR_TOKEN=$(SONAR_TOKEN) \
 		-e SONAR_HOST_URL=https://sonarcloud.io \
 		-v "$(PWD):/usr/src" \
-		sonarsource/sonar-scanner-cli:11
+		sonarsource/sonar-scanner-cli:11 \
+		-Dsonar.exclusions=$(SONAR_EXCLUDE) \
 
 # ============================================================================
 # 8. LOCAL DESKTOP DOCKER UTILITIES (Chạy nhanh một container)
