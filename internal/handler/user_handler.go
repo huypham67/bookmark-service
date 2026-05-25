@@ -16,11 +16,11 @@ type User interface {
 }
 
 type userHandler struct {
-	userService service.UserService
+	userService service.User
 }
 
 // NewUserHandler creates a new user handler with the given user service.
-func NewUserHandler(userService service.UserService) User {
+func NewUserHandler(userService service.User) User {
 	return &userHandler{
 		userService: userService,
 	}

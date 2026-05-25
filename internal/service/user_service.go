@@ -8,24 +8,26 @@ import (
 	"github.com/huypham67/bookmark-service/internal/dto/request"
 	"github.com/huypham67/bookmark-service/internal/model"
 	"github.com/huypham67/bookmark-service/internal/repository"
-	"github.com/huypham67/bookmark-service/pkg/utils"
+	"github.com/huypham67/bookmark-service/pkg/security"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
-// UserService defines the contract for user services.
-type UserService interface {
+// User defines the contract for user services.
+type User interface {
 	RegisterUser(ctx context.Context, req request.RegisterUserRequest) (*model.User, error)
 }
 
 type userService struct {
-	userRepo repository.User
+	userRepo       repository.User
+	passwordHasher security.PasswordHasher
 }
 
-// NewUserService creates a new user service with the given user repository.
-func NewUserService(userRepo repository.User) UserService {
+// NewUserService creates a new user service with the given user repository and password hasher.
+func NewUserService(userRepo repository.User, passwordHasher security.PasswordHasher) User {
 	return &userService{
-		userRepo: userRepo,
+		userRepo:       userRepo,
+		passwordHasher: passwordHasher,
 	}
 }
 
@@ -66,7 +68,7 @@ func (s *userService) RegisterUser(ctx context.Context, req request.RegisterUser
 	}
 
 	// Hash password
-	hashedPassword, err := utils.HashPassword(req.Password)
+	hashedPassword, err := s.passwordHasher.Hash(req.Password)
 	if err != nil {
 		log.Error().
 			Err(err).
