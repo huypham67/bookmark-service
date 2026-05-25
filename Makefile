@@ -1,5 +1,5 @@
 # ============================================================================
-# 1. CORE VARIABLES (Cấu hình hệ thống hệ mặt trời)
+# 1. CORE VARIABLES (Centralized Configuration & Contextual Parameters)
 # ============================================================================
 APP_NAME           = bookmark-service
 CMD_PATH           = ./cmd/api/main.go
@@ -35,11 +35,15 @@ DOCKER_CONTAINER   = $(APP_NAME)
 
 # Quality Gates & Verification Layers
 COVERAGE_FOLDER   ?= coverage_report
-COVERAGE_EXCLUDE  ?= "mocks|main.go|_test.go|docs|bootstrap|config|logger|redis|sqldb"
+COVERAGE_EXCLUDE  ?= mocks|main.go|_test.go|docs|bootstrap|config|logger|redis|sqldb
 COVERAGE_THRESHOLD ?= 80
 
 # SonarCloud SAST Exclusion Patterns
 SONAR_EXCLUDE     ?= "**/*_test.go,**/vendor/**,**/mocks/**,docs/**,bin/**,$(COVERAGE_FOLDER)/**,**/logger/**,**/redis/**,**/sqldb/**"
+
+# Buildx Advanced Cache Orchestration Backend
+CACHE_FROM        ?= type=local,src=/tmp/.buildx-cache
+CACHE_TO          ?= type=local,dest=/tmp/.buildx-cache-new,mode=max
 
 # System Default Gate
 .DEFAULT_GOAL     := help
@@ -181,23 +185,25 @@ docker-test:
 	@echo "🧪 Executing isolated test suite within Docker Buildx environment..."
 	@mkdir -p $(COVERAGE_FOLDER)
 	docker buildx build \
-		--build-arg COVERAGE_EXCLUDE=$(COVERAGE_EXCLUDE) \
-		--target test \
-		--output type=local,dest=$(COVERAGE_FOLDER) .
+	   --build-arg COVERAGE_EXCLUDE="$(COVERAGE_EXCLUDE)" \
+	   --target test \
+	   --cache-from=$(CACHE_FROM) \
+	   --cache-to=$(CACHE_TO) \
+	   --output type=local,dest=$(COVERAGE_FOLDER) .
 	@echo ""
 	@echo "📊 Evaluating sandbox coverage results..."
 	@if [ -f $(COVERAGE_FOLDER)/coverage.out ]; then \
-		total=$$(go tool cover -func=$(COVERAGE_FOLDER)/coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
-		echo "Sandbox Target Coverage: $$total%"; \
-		if [ $$(echo "$$total < $(COVERAGE_THRESHOLD)" | bc -l) -eq 1 ]; then \
-			echo "❌ FAIL: Sandbox Coverage ($$total%) drops below quality gate ($(COVERAGE_THRESHOLD)%)"; \
-			exit 1; \
-		else \
-			echo "✅ PASS: Sandbox Coverage ($$total%) verified successfully!"; \
-		fi \
+	   total=$$(go tool cover -func=$(COVERAGE_FOLDER)/coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	   echo "Sandbox Target Coverage: $$total%"; \
+	   if [ $$(echo "$$total < $(COVERAGE_THRESHOLD)" | bc -l) -eq 1 ]; then \
+	      echo "❌ FAIL: Sandbox Coverage ($$total%) drops below quality gate ($(COVERAGE_THRESHOLD)%)"; \
+	      exit 1; \
+	   else \
+	      echo "✅ PASS: Sandbox Coverage ($$total%) verified successfully!"; \
+	   fi \
 	else \
-		echo "❌ Error: Coverage synchronization lost. Output asset missing."; \
-		exit 1; \
+	   echo "❌ Error: Coverage synchronization lost. Output asset missing."; \
+	   exit 1; \
 	fi
 
 docker-login:
@@ -214,6 +220,7 @@ docker-build-push:
 		echo "::notice title=Docker Buildx::🏷️ [Release] Tagging as: $(GIT_REF_NAME) + latest"; \
 		docker buildx build \
 			--target final \
+			--cache-from=$(CACHE_FROM) \
 			--push=true \
 			-t $(DOCKER_IMAGE):$(GIT_REF_NAME) \
 			-t $(DOCKER_IMAGE):latest .; \
@@ -221,6 +228,7 @@ docker-build-push:
 		echo "::notice title=Docker Buildx::▶️ [PR Mode] Build only. NO PUSH"; \
 		docker buildx build \
 			--target final \
+			--cache-from=$(CACHE_FROM) \
 			--push=false \
 			-t $(DOCKER_IMAGE):test .; \
 	else \
@@ -228,6 +236,7 @@ docker-build-push:
 		echo "::notice title=Docker Buildx::🚀 [Main] Tagging as: main + $$SHORT_SHA + latest"; \
 		docker buildx build \
 			--target final \
+			--cache-from=$(CACHE_FROM) \
 			--push=true \
 			-t $(DOCKER_IMAGE):main \
 			-t $(DOCKER_IMAGE):$$SHORT_SHA \
@@ -246,7 +255,7 @@ docker-sonar:
 		-e SONAR_HOST_URL=https://sonarcloud.io \
 		-v "$(PWD):/usr/src" \
 		sonarsource/sonar-scanner-cli:11 \
-		-Dsonar.exclusions=$(SONAR_EXCLUDE) \
+		-Dsonar.exclusions=$(SONAR_EXCLUDE)
 
 # ============================================================================
 # 8. LOCAL DESKTOP DOCKER UTILITIES (Chạy nhanh một container)
@@ -273,6 +282,8 @@ docker-clean:
 	@echo "🧹 Executing full structural cache purge..."
 	-docker rm -f $(DOCKER_CONTAINER)
 	-docker rmi -f $$(docker images -q $(DOCKER_IMAGE) 2>/dev/null) 2>/dev/null || true
+	@echo "🧽 Purging Docker Buildx cache mounts..."
+	docker builder prune --filter type=exec.cachemount --force
 
 # ============================================================================
 # 9. INTEGRATED ORCHESTRATION (Docker Compose)

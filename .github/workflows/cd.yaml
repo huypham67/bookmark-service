@@ -12,7 +12,7 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Deploy Application
+      - name: Deploy Application via Docker Compose Engine
         working-directory: /opt/bookmark-system
         env:
           IMAGE_TAG: ${{ inputs.image_tag }}
@@ -20,16 +20,18 @@ jobs:
           set -e
 
           echo "TAG=${IMAGE_TAG}" > .env
-          
-          echo "::notice title=CD Status::🚀 Deploying with image tag: [${IMAGE_TAG}]"
+          echo "::notice title=CD Status::🚀 Initiating deployment for image tag: [${IMAGE_TAG}]"
 
-          echo "Pulling image: bookmark-service:${IMAGE_TAG}..."
+          echo "🔍 Validating docker-compose configuration syntax..."
+          docker compose config > /dev/null
+
+          echo "📥 Pulling container image layer: [${IMAGE_TAG}]..."
           docker compose pull bookmark-service
 
-          echo "Recreating service..."
+          echo "🔄 Recreating single-container production target..."
           docker compose up -d --force-recreate bookmark-service
 
-          echo "Cleaning up unused images..."
+          echo "🧹 Purging architectural stale images..."
           docker image prune -f --filter "until=24h"
 
-          echo "✅ Deployment completed successfully"
+          echo "✅ CD Pipeline executed successfully. Deployment completed."

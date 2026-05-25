@@ -33,7 +33,7 @@ RUN mkdir -p ${_OUTPUTDIR}
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 go test ./... \
+    CGO_ENABLED=1 go test ./... \
       -coverprofile=coverage.tmp \
       -covermode=atomic \
       -coverpkg=./internal/... \
