@@ -7,8 +7,10 @@ import (
 	"github.com/huypham67/bookmark-service/internal/handler"
 	"github.com/huypham67/bookmark-service/internal/repository"
 	"github.com/huypham67/bookmark-service/internal/repository/ping"
+	"github.com/huypham67/bookmark-service/internal/repository/testutil"
 	"github.com/huypham67/bookmark-service/internal/service"
 	"github.com/huypham67/bookmark-service/pkg/redis"
+	"github.com/huypham67/bookmark-service/pkg/security"
 	"github.com/huypham67/bookmark-service/pkg/utils"
 )
 
@@ -68,5 +70,30 @@ func setupLinkTestApp(t *testing.T) *TestApp {
 	return &TestApp{
 		Router:    router,
 		MockRedis: mockRedis,
+	}
+}
+
+func setupUserTestApp(t *testing.T) *TestApp {
+	t.Helper()
+
+	mockDB := testutil.SetupTestDatabase(t)
+
+	userRepository := repository.NewUserRepository(mockDB)
+
+	passwordHasher := security.NewBcryptPasswordHasher()
+
+	userService := service.NewUserService(userRepository, passwordHasher)
+
+	userHandler := handler.NewUserHandler(userService)
+
+	router := api.NewRouter()
+
+	api.RegisterUserRoutes(
+		router.GroupV1(),
+		userHandler,
+	)
+
+	return &TestApp{
+		Router: router,
 	}
 }
