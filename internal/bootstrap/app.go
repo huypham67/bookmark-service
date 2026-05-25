@@ -14,6 +14,7 @@ import (
 	"github.com/huypham67/bookmark-service/internal/service"
 	"github.com/huypham67/bookmark-service/pkg/logger"
 	pkgRedis "github.com/huypham67/bookmark-service/pkg/redis"
+	"github.com/huypham67/bookmark-service/pkg/security"
 	"github.com/huypham67/bookmark-service/pkg/sqldb"
 	"github.com/huypham67/bookmark-service/pkg/utils"
 	"github.com/redis/go-redis/v9"
@@ -117,9 +118,8 @@ func runMigrations(db *gorm.DB) error {
 
 func initUserHandler(db *gorm.DB) handler.User {
 	userRepository := repository.NewUserRepository(db)
-
-	userService := service.NewUserService(userRepository)
-
+	passwordHasher := security.NewBcryptPasswordHasher()
+	userService := service.NewUserService(userRepository, passwordHasher)
 	return handler.NewUserHandler(userService)
 }
 
