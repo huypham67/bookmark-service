@@ -26,17 +26,17 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # Stage 3: TEST - Run Tests and Generate Coverage Reports
 FROM base AS test-exec
 
-ARG COVERAGE_EXCLUDE="docs/|cmd/api/main.go"
+ARG COVERAGE_EXCLUDE
 ENV _OUTPUTDIR=/tmp/coverage
 
 RUN mkdir -p ${_OUTPUTDIR}
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    go test ./... \
+    CGO_ENABLED=0 go test ./... \
       -coverprofile=coverage.tmp \
       -covermode=atomic \
-      -coverpkg=./... \
+      -coverpkg=./internal/... \
       -p 1 && \
     grep -v -E "${COVERAGE_EXCLUDE}" coverage.tmp > ${_OUTPUTDIR}/coverage.out && \
     go tool cover -html=${_OUTPUTDIR}/coverage.out -o ${_OUTPUTDIR}/coverage.html
