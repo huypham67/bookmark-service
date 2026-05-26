@@ -70,6 +70,8 @@ help:
 	@echo "Development Workflow:"
 	@echo "  make run                 Run application locally with dynamic reload"
 	@echo "  make dev                 Trigger complete local cycle (fmt -> vet -> test -> run)"
+	@echo "  make gen-keys           Sinh cặp khóa RSA trên sản xuất VM (Yêu cầu sudo)"
+	@echo "  make gen-keys-local     Sinh cặp khóa RSA tại thư mục dự án để test Local"
 	@echo "Testing & Linting Core:"
 	@echo "  make test                Execute local tests + HTML report visualization"
 	@echo "  make fmt | make vet      Execute code style formatting and analysis"
@@ -301,7 +303,29 @@ compose-restart:
 # ============================================================================
 # 10. SYSTEM UTILITIES & METADATA INFRASTRUCTURE
 # ============================================================================
-.PHONY: swagger install-tools info clean clean-docs clean-all
+.PHONY: swagger install-tools info clean clean-docs clean-all gen-keys gen-keys-local
+
+gen-keys:
+	@echo "🔐 [SECURITY] Đang khởi tạo hạ tầng mật mã khóa trên VM..."
+	sudo mkdir -p $(VM_KEYS_DIR)
+	@echo "🔑 Generating RSA Private Key (2048 bit)..."
+	sudo openssl genpkey -algorithm RSA -out $(VM_KEYS_DIR)/private.pem -pkeyopt rsa_keygen_bits:2048
+	@echo "🔓 Extracting Public Key configuration..."
+	sudo openssl rsa -pubout -in $(VM_KEYS_DIR)/private.pem -out $(VM_KEYS_DIR)/public.pem
+	@echo "🛡️  Applying strict Linux file system permissions (600/644)..."
+	sudo chmod 600 $(VM_KEYS_DIR)/private.pem
+	sudo chmod 644 $(VM_KEYS_DIR)/public.pem
+	@echo "✅ Cryptography core operational. Keys storage synced at: $(VM_KEYS_DIR)"
+
+gen-keys-local:
+	@echo "🚀 [DEV] Đang sinh cặp khóa RSA thử nghiệm tại Local..."
+	mkdir -p $(LOCAL_KEYS_DIR)
+	@echo "🔑 Generating Local Private Key..."
+	openssl genpkey -algorithm RSA -out $(LOCAL_KEYS_DIR)/private.pem -pkeyopt rsa_keygen_bits:2048
+	@echo "🔓 Extracting Local Public Key..."
+	openssl rsa -pubout -in $(LOCAL_KEYS_DIR)/private.pem -out $(LOCAL_KEYS_DIR)/public.pem
+	@echo "✅ Local keys infrastructure ready at: $(LOCAL_KEYS_DIR)"
+
 swagger:
 	@echo "📘 Compiling API Swagger reference system..."
 	@which swag > /dev/null || (echo "❌ System Error: Executable 'swag' dependency missing. Run: make install-tools"; exit 1)
@@ -323,3 +347,4 @@ clean:
 clean-docs:
 	rm -rf $(DOCS_DIR)
 clean-all: clean clean-docs docker-clean
+	rm -rf $(LOCAL_KEYS_DIR)

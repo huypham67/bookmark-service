@@ -26,3 +26,6 @@ coverage.txt
 coverage
 coverage.html
 coverage.tmp
+
+# PEM key files (private/public keys)
+*.pem
