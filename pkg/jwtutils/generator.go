@@ -57,14 +57,15 @@ func loadRSAPrivateKeyFromFile(path string) (*rsa.PrivateKey, error) {
 	}
 
 	var privateKey *rsa.PrivateKey
-	if block.Type == "RSA PRIVATE KEY" {
+	switch block.Type {
+	case "RSA PRIVATE KEY":
 		// PKCS#1 format
 		key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse PKCS#1 RSA private key: %w", err)
 		}
 		privateKey = key
-	} else if block.Type == "PRIVATE KEY" {
+	case "PRIVATE KEY":
 		// PKCS#8 format
 		parsedKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 		if err != nil {
@@ -75,7 +76,7 @@ func loadRSAPrivateKeyFromFile(path string) (*rsa.PrivateKey, error) {
 		if !ok {
 			return nil, fmt.Errorf("not an RSA private key")
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("unsupported PEM block type: %s", block.Type)
 	}
 
