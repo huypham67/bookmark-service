@@ -90,7 +90,7 @@ func TestRSATokenGenerator_GenerateToken(t *testing.T) {
 				assert.Contains(t, claims.Audience, f.audience)
 
 				assert.NotNil(t, claims.ExpiresAt)
-				assert.True(t, claims.ExpiresAt.Time.After(time.Now()))
+				assert.True(t, claims.ExpiresAt.After(time.Now()))
 			},
 		},
 	}
