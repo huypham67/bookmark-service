@@ -2,6 +2,7 @@ package model
 
 import "time"
 
+// User represents a user entity stored in the database.
 type User struct {
 	ID          string    `json:"id" gorm:"primaryKey;type:uuid;column:id"`
 	DisplayName string    `json:"display_name" gorm:"not null;column:display_name"`
