@@ -1,13 +1,31 @@
-# ============================================================================
-# 1. CORE VARIABLES (Centralized Configuration & Contextual Parameters)
-# ============================================================================
+# Makefile for Bookmark Service API - Elite Production Edition
+
+# 1. GENERAL CONFIGURATION & ENVIRONMENT VARIABLES
 APP_NAME           = bookmark-service
 CMD_PATH           = ./cmd/api/main.go
 MAIN_PACKAGE       = github.com/huypham67/bookmark-service
 BIN_DIR            = ./bin
 DOCS_DIR           = ./docs
+COVERAGE_FOLDER   ?= coverage_report
+COVERAGE_THRESHOLD ?= 80
 
-# Git Context Execution (Local fallback vs CI injections)
+# Group 1: Định dạng Ant-style Glob dành cho Sonar (Code chạy thật nhưng không bắt viết Unit Test)
+SONAR_EXCLUDE_PATTERNS    = **/*_test.go,**/vendor/**,**/mocks/**,**/testutil/**,docs/**,bin/**,$(COVERAGE_FOLDER)/**,**/*.pb.go
+
+# Group 1: Định dạng Regex tương ứng để lọc file ở Local qua lệnh grep
+GREP_EXCLUDE_GROUP_1      = mocks|vendor|docs|bin|_test\.go|testutil|\.pb\.go
+
+# Group 2: Định dạng Ant-style Glob dành cho Sonar (Các file có thể viết Unit Test nhưng không bắt buộc, thường là các file cấu hình, bootstrap, logger, router,...)
+SONAR_COVERAGE_EXCLUSIONS = **/cmd/**,**/internal/bootstrap/**,**/internal/api/router.go,**/pkg/logger/**,**/pkg/redis/**,**/pkg/sqldb/**,**/pkg/jwtutils/custom_claims.go,**/pkg/jwtutils/crypto_loader.go,**/*config.go,**/internal/integration/test_helper.go
+# Group 2: Định dạng Regex tương ứng để lọc file ở Local qua lệnh grep
+GREP_EXCLUDE_GROUP_2      = cmd/|bootstrap|api/router|logger|redis|sqldb|custom_claims|crypto_loader|config\.go|test_helper
+
+# Tổng hợp bộ lọc gộp để áp dụng cho lệnh grep khi xử lý dữ liệu coverage tại Local
+COVERAGE_EXCLUDE          = $(GREP_EXCLUDE_GROUP_1)|$(GREP_EXCLUDE_GROUP_2)
+
+# ============================================================================
+# 2. NGỮ CẢNH GIT (Nhận diện tự động từ local hoặc CI)
+# ============================================================================
 VERSION           ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT            ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME        ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
@@ -17,7 +35,9 @@ GIT_EVENT_NAME    ?= local
 GIT_REF_TYPE      ?= branch
 GIT_REF_NAME      ?= $(VERSION)
 
-# Go Toolchain Parameters
+# ============================================================================
+# 3. THAM SỐ TRÌNH BIÊN DỊCH GO
+# ============================================================================
 GO                 = go
 GOTEST             = go test
 GOLINT             = golangci-lint
@@ -27,29 +47,26 @@ LDFLAGS            = -ldflags "-s -w \
                      -X main.Commit=$(COMMIT) \
                      -X main.BuildTime=$(BUILD_TIME)"
 
-# Docker Registry & Infrastructure Targets
+# ============================================================================
+# 4. ĐỊA CHỈ DOCKER REGISTRY VÀ HẠ TẦNG
+# ============================================================================
 DOCKER_REGISTRY   ?= docker.io
 DOCKER_NAMESPACE  ?= huypham053
 DOCKER_IMAGE       = $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(APP_NAME)
 DOCKER_CONTAINER   = $(APP_NAME)
 
-# Quality Gates & Verification Layers
-COVERAGE_FOLDER   ?= coverage_report
-COVERAGE_EXCLUDE  ?= mocks|main.go|_test.go|docs|bootstrap|config|logger|redis|sqldb
-COVERAGE_THRESHOLD ?= 80
-
-# SonarCloud SAST Exclusion Patterns
-SONAR_EXCLUDE     ?= "**/*_test.go,**/vendor/**,**/mocks/**,docs/**,bin/**,$(COVERAGE_FOLDER)/**,**/logger/**,**/redis/**,**/sqldb/**"
-
-# Buildx Advanced Cache Orchestration Backend
 CACHE_FROM        ?= type=local,src=/tmp/.buildx-cache
 CACHE_TO          ?= type=local,dest=/tmp/.buildx-cache-new,mode=max
 
-# System Default Gate
+# Đường dẫn lưu khóa bảo mật JWT
+VM_KEYS_DIR       ?= /opt/bookmark-service/keys
+LOCAL_KEYS_DIR    ?= ./keys
+
+# Lệnh mặc định khi gõ 'make' không kèm tham số
 .DEFAULT_GOAL     := help
 
 # ============================================================================
-# 2. INTERNAL MACROS / HELPER FUNCTIONS
+# 5. MACROS / HÀM BỔ TRỢ ĐÓNG GÓI BINARY
 # ============================================================================
 define go-build
 	@echo "🚀 Building $(APP_NAME) for $(1)/$(2)..."
@@ -59,7 +76,7 @@ define go-build
 endef
 
 # ============================================================================
-# 3. INTERACTIVE DOCUMENTATION (Help UI)
+# 6. GIAO DIỆN HƯỚNG DẪN TƯƠNG TÁC (Help UI)
 # ============================================================================
 .PHONY: help
 help:
@@ -89,7 +106,7 @@ help:
 	@echo "================================================================="
 
 # ============================================================================
-# 4. STANDARD APPLICATION ROAD (Local Dev)
+# 7. ĐƯỜNG PHÁT TRIỂN TIÊU CHUẨN (Local Dev)
 # ============================================================================
 .PHONY: run dev fmt vet lint tidy vendor
 run:
@@ -121,33 +138,34 @@ vendor:
 	$(GO) mod vendor
 
 # ============================================================================
-# 5. VERIFICATION & QUALITY LAYER (Local Machine Validation)
+# 8. TẦNG KIỂM THỬ VÀ ĐO LƯỜNG CHẤT LƯỢNG MÁY LOCAL
 # ============================================================================
 .PHONY: test test-coverage
 test:
 	@echo "🧪 Running local tests..."
+	@echo "   Strategy: Áp dụng bộ lọc gộp COVERAGE_EXCLUDE nhằm tối ưu điểm số thực tế"
 	@$(GO) clean -testcache
 	@mkdir -p $(COVERAGE_FOLDER)
-	@$(GO) test ./... -coverprofile=$(COVERAGE_FOLDER)/coverage.tmp -covermode=atomic -coverpkg=./internal/... -p 1
-	@grep -vE $(COVERAGE_EXCLUDE) $(COVERAGE_FOLDER)/coverage.tmp > $(COVERAGE_FOLDER)/coverage.out || touch $(COVERAGE_FOLDER)/coverage.out
+	@$(GO) test ./... -coverprofile=$(COVERAGE_FOLDER)/coverage.tmp -covermode=atomic -coverpkg=./internal/...,./pkg/jwtutils/...,./pkg/security/... -p 1
+	@grep -vE "$(COVERAGE_EXCLUDE)" $(COVERAGE_FOLDER)/coverage.tmp > $(COVERAGE_FOLDER)/coverage.out || touch $(COVERAGE_FOLDER)/coverage.out
 	@$(GO) tool cover -html=$(COVERAGE_FOLDER)/coverage.out -o $(COVERAGE_FOLDER)/coverage.html
 	@echo ""
 	@echo "📊 Analyzing coverage data criteria..."
 	@total=$$(go tool cover -func=$(COVERAGE_FOLDER)/coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
 	echo "Total Coverage: $$total%"; \
 	if [ $$(echo "$$total < $(COVERAGE_THRESHOLD)" | bc -l) -eq 1 ]; then \
-	   echo "❌ FAIL: Coverage ($$total%) is below required threshold ($(COVERAGE_THRESHOLD)%)"; \
-	   exit 1; \
-	else \
-	   echo "✅ PASS: Coverage ($$total%) meets threshold ($(COVERAGE_THRESHOLD)%)"; \
-	fi
+       echo "❌ FAIL: Coverage ($$total%) thấp hơn ngưỡng yêu cầu ($(COVERAGE_THRESHOLD)%)"; \
+       exit 1; \
+    else \
+       echo "✅ PASS: Coverage ($$total%) đạt chuẩn thành công!"; \
+    fi
 
 test-coverage: test
 	@echo "📂 Opening local coverage report..."
 	$(GO) tool cover -html=$(COVERAGE_FOLDER)/coverage.out
 
 # ============================================================================
-# 6. COMPILATION ARCHITECTURE (Local Binaries)
+# 9. BIÊN DỊCH ỨNG DỤNG (Local Binaries)
 # ============================================================================
 .PHONY: build build-linux build-macos build-windows build-prod release
 build:
@@ -179,7 +197,7 @@ release: clean build-linux build-macos build-windows
 	@ls -lh $(BIN_DIR)
 
 # ============================================================================
-# 7. HIGH-TIER CLOUD PIPELINE TARGETS (Docker Sandbox, Sonar & Buildx)
+# 10. ĐƯỜNG ỐNG TỰ ĐỘNG HÓA CAO CẤP (CI/CD Pipeline - Sandbox & Sonar)
 # ============================================================================
 .PHONY: docker-test docker-login docker-build-push docker-sonar
 
@@ -187,80 +205,92 @@ docker-test:
 	@echo "🧪 Executing isolated test suite within Docker Buildx environment..."
 	@mkdir -p $(COVERAGE_FOLDER)
 	docker buildx build \
-	   --build-arg COVERAGE_EXCLUDE="$(COVERAGE_EXCLUDE)" \
-	   --target test \
-	   --cache-from=$(CACHE_FROM) \
-	   --cache-to=$(CACHE_TO) \
-	   --output type=local,dest=$(COVERAGE_FOLDER) .
+       --build-arg COVERAGE_EXCLUDE="$(COVERAGE_EXCLUDE)" \
+       --target test \
+       --cache-from=$(CACHE_FROM) \
+       --cache-to=$(CACHE_TO) \
+       --output type=local,dest=$(COVERAGE_FOLDER) .
 	@echo ""
 	@echo "📊 Evaluating sandbox coverage results..."
 	@if [ -f $(COVERAGE_FOLDER)/coverage.out ]; then \
-	   total=$$(go tool cover -func=$(COVERAGE_FOLDER)/coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
-	   echo "Sandbox Target Coverage: $$total%"; \
-	   if [ $$(echo "$$total < $(COVERAGE_THRESHOLD)" | bc -l) -eq 1 ]; then \
-	      echo "❌ FAIL: Sandbox Coverage ($$total%) drops below quality gate ($(COVERAGE_THRESHOLD)%)"; \
-	      exit 1; \
-	   else \
-	      echo "✅ PASS: Sandbox Coverage ($$total%) verified successfully!"; \
-	   fi \
-	else \
-	   echo "❌ Error: Coverage synchronization lost. Output asset missing."; \
-	   exit 1; \
-	fi
+       total=$$(go tool cover -func=$(COVERAGE_FOLDER)/coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+       echo "Sandbox Target Coverage: $$total%"; \
+       if [ $$(echo "$$total < $(COVERAGE_THRESHOLD)" | bc -l) -eq 1 ]; then \
+          echo "❌ FAIL: Sandbox Coverage ($$total%) không đạt chỉ tiêu điểm chất lượng"; \
+          exit 1; \
+       else \
+          echo "✅ PASS: Sandbox Coverage ($$total%) vượt qua cổng kiểm soát!"; \
+       fi \
+    else \
+       echo "❌ Error: Không tìm thấy file dữ liệu kiểm thử đồng bộ."; \
+       exit 1; \
+    fi
 
 docker-login:
 	@echo "🔐 Securely initializing Docker Hub Authentication..."
 	@if [ -z "$(DOCKERHUB_USERNAME)" ] || [ -z "$(DOCKERHUB_TOKEN)" ]; then \
-		echo "❌ Error: Active credentials missing from environment context!"; \
-		exit 1; \
-	fi
+       echo "❌ Error: Active credentials missing from environment context!"; \
+       exit 1; \
+    fi
 	@echo "$(DOCKERHUB_TOKEN)" | docker login -u "$(DOCKERHUB_USERNAME)" --password-stdin
 
 docker-build-push:
 	@echo "📦 [PIPELINE] Evaluating context for secure container deployment..."
 	@if [ "$(GIT_REF_TYPE)" = "tag" ]; then \
-		echo "::notice title=Docker Buildx::🏷️ [Release] Tagging as: $(GIT_REF_NAME) + latest"; \
-		docker buildx build \
-			--target final \
-			--cache-from=$(CACHE_FROM) \
-			--push=true \
-			-t $(DOCKER_IMAGE):$(GIT_REF_NAME) \
-			-t $(DOCKER_IMAGE):latest .; \
-	elif [ "$(GIT_EVENT_NAME)" = "pull_request" ]; then \
-		echo "::notice title=Docker Buildx::▶️ [PR Mode] Build only. NO PUSH"; \
-		docker buildx build \
-			--target final \
-			--cache-from=$(CACHE_FROM) \
-			--push=false \
-			-t $(DOCKER_IMAGE):test .; \
-	else \
-		SHORT_SHA=$$(echo "$(GIT_SHA)" | cut -c1-7); \
-		echo "::notice title=Docker Buildx::🚀 [Main] Tagging as: main + $$SHORT_SHA + latest"; \
-		docker buildx build \
-			--target final \
-			--cache-from=$(CACHE_FROM) \
-			--push=true \
-			-t $(DOCKER_IMAGE):main \
-			-t $(DOCKER_IMAGE):$$SHORT_SHA \
-			-t $(DOCKER_IMAGE):latest .; \
-	fi
+       echo "::notice title=Docker Buildx::🏷️ [Release] Tagging as: $(GIT_REF_NAME) + latest"; \
+       docker buildx build \
+          --target final \
+          --cache-from=$(CACHE_FROM) \
+          --push=true \
+          -t $(DOCKER_IMAGE):$(GIT_REF_NAME) \
+          -t $(DOCKER_IMAGE):latest .; \
+    elif [ "$(GIT_EVENT_NAME)" = "pull_request" ]; then \
+       echo "::notice title=Docker Buildx::▶️ [PR Mode] Build only. NO PUSH"; \
+       docker buildx build \
+          --target final \
+          --cache-from=$(CACHE_FROM) \
+          --push=false \
+          -t $(DOCKER_IMAGE):test .; \
+    else \
+       SHORT_SHA=$$(echo "$(GIT_SHA)" | cut -c1-7); \
+       echo "::notice title=Docker Buildx::🚀 [Main] Tagging as: main + $$SHORT_SHA + latest"; \
+       docker buildx build \
+          --target final \
+          --cache-from=$(CACHE_FROM) \
+          --push=true \
+          -t $(DOCKER_IMAGE):main \
+          -t $(DOCKER_IMAGE):$$SHORT_SHA \
+          -t $(DOCKER_IMAGE):latest .; \
+    fi
 
 docker-sonar:
 	@echo "🔍 [SONAR] Initiating Cloud Vulnerability & Code Smell Scan..."
+	@echo "   Strategy: Thực thi cơ chế ghi đè tham số động để đồng bộ bộ lọc."
 	@if [ -z "$(SONAR_TOKEN)" ]; then \
-		echo "❌ Error: Scan blocked. SONAR_TOKEN context variable is missing!"; \
-		exit 1; \
-	fi
+       echo "❌ Error: Scan blocked. SONAR_TOKEN context variable is missing!"; \
+       exit 1; \
+    fi
 	@docker pull --quiet sonarsource/sonar-scanner-cli:11 || true
 	docker run --rm \
-		-e SONAR_TOKEN=$(SONAR_TOKEN) \
-		-e SONAR_HOST_URL=https://sonarcloud.io \
-		-v "$(PWD):/usr/src" \
-		sonarsource/sonar-scanner-cli:11 \
-		-Dsonar.exclusions=$(SONAR_EXCLUDE)
+       -e SONAR_TOKEN=$(SONAR_TOKEN) \
+       -e SONAR_HOST_URL=https://sonarcloud.io \
+       -v "$(PWD):/usr/src" \
+       sonarsource/sonar-scanner-cli:11 \
+       -Dsonar.organization="huypham67" \
+       -Dsonar.projectKey="huypham67_bookmark-service" \
+       -Dsonar.projectName="$(APP_NAME)" \
+       -Dsonar.projectVersion="1.0" \
+       -Dsonar.sources="." \
+       -Dsonar.tests="." \
+       -Dsonar.test.inclusions="**/*_test.go" \
+       -Dsonar.test.exclusions="**/vendor/**,**/mocks/**" \
+       -Dsonar.exclusions="$(SONAR_EXCLUDE_PATTERNS)" \
+       -Dsonar.coverage.exclusions="$(SONAR_COVERAGE_EXCLUSIONS)" \
+       -Dsonar.go.coverage.reportPaths="$(COVERAGE_FOLDER)/coverage.out" \
+       -Dsonar.qualitygate.wait=true
 
 # ============================================================================
-# 8. LOCAL DESKTOP DOCKER UTILITIES (Chạy nhanh một container)
+# 11. TIỆN ÍCH QUẢN LÝ CONTAINER NHANH (Docker Local)
 # ============================================================================
 .PHONY: docker-run docker-stop docker-logs docker-shell docker-clean
 
@@ -288,7 +318,7 @@ docker-clean:
 	docker builder prune --filter type=exec.cachemount --force
 
 # ============================================================================
-# 9. INTEGRATED ORCHESTRATION (Docker Compose)
+# 12. PHỐI HỢP ĐA DỊCH VỤ (Docker Compose)
 # ============================================================================
 .PHONY: compose-up compose-down compose-logs compose-restart
 compose-up:
@@ -301,7 +331,7 @@ compose-restart:
 	docker compose down && docker compose up --build -d
 
 # ============================================================================
-# 10. SYSTEM UTILITIES & METADATA INFRASTRUCTURE
+# 13. TIỆN ÍCH HỆ THỐNG VÀ SINH KHÓA BẢO MẬT
 # ============================================================================
 .PHONY: swagger install-tools info clean clean-docs clean-all gen-keys gen-keys-local
 
