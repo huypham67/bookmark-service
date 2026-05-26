@@ -3,9 +3,6 @@ package jwtutils
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
-	"os"
 	"testing"
 	"time"
 
@@ -13,28 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func createTempPrivateKeyFile(t *testing.T) string {
-	t.Helper()
-
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	keyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
-
-	pemData := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: keyBytes,
-	})
-
-	tmpFile, err := os.CreateTemp("", "private-key-*.pem")
-	require.NoError(t, err)
-
-	err = os.WriteFile(tmpFile.Name(), pemData, 0600)
-	require.NoError(t, err)
-
-	return tmpFile.Name()
-}
 
 func TestRSATokenGenerator_GenerateToken(t *testing.T) {
 	t.Parallel()
@@ -99,10 +74,11 @@ func TestRSATokenGenerator_GenerateToken(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			keyPath := createTempPrivateKeyFile(t)
+			privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+			require.NoError(t, err)
 
 			generator, err := NewTokenGenerator(
-				keyPath,
+				privateKey,
 				tc.fields.issuer,
 				tc.fields.audience,
 				tc.fields.expiry,

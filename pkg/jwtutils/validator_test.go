@@ -3,53 +3,12 @@ package jwtutils
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func createTempKeyPairFiles(t *testing.T) (string, string) {
-	t.Helper()
-
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	// private key
-	privateKeyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
-
-	privatePEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: privateKeyBytes,
-	})
-
-	privateFile, err := os.CreateTemp("", "private-key-*.pem")
-	require.NoError(t, err)
-
-	err = os.WriteFile(privateFile.Name(), privatePEM, 0600)
-	require.NoError(t, err)
-
-	// public key
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
-	require.NoError(t, err)
-
-	publicPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: publicKeyBytes,
-	})
-
-	publicFile, err := os.CreateTemp("", "public-key-*.pem")
-	require.NoError(t, err)
-
-	err = os.WriteFile(publicFile.Name(), publicPEM, 0600)
-	require.NoError(t, err)
-
-	return privateFile.Name(), publicFile.Name()
-}
 
 func TestRSATokenValidator_ValidateToken(t *testing.T) {
 	t.Parallel()
@@ -147,10 +106,12 @@ func TestRSATokenValidator_ValidateToken(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			privateKeyPath, publicKeyPath := createTempKeyPairFiles(t)
+			privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+			require.NoError(t, err)
+			publicKey := &privateKey.PublicKey
 
 			validator, err := NewTokenValidator(
-				publicKeyPath,
+				publicKey,
 				tc.fields.issuer,
 				tc.fields.audience,
 			)
@@ -160,7 +121,7 @@ func TestRSATokenValidator_ValidateToken(t *testing.T) {
 
 			if tokenString == "" {
 				generator, err := NewTokenGenerator(
-					privateKeyPath,
+					privateKey,
 					tc.args.tokenIssuer,
 					tc.args.tokenAudience,
 					tc.fields.expiry,

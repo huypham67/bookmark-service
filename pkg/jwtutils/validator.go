@@ -2,10 +2,7 @@ package jwtutils
 
 import (
 	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
-	"os"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -22,12 +19,7 @@ type rsaTokenValidator struct {
 }
 
 // NewTokenValidator creates a new token validator with the given RSA public key, issuer, and audience.
-func NewTokenValidator(publicKeyPath, issuer, audience string) (TokenValidator, error) {
-	publicKey, err := loadRSAPublicKeyFromFile(publicKeyPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load RSA public key: %w", err)
-	}
-
+func NewTokenValidator(publicKey *rsa.PublicKey, issuer, audience string) (TokenValidator, error) {
 	return &rsaTokenValidator{
 		publicKey: publicKey,
 		issuer:    issuer,
@@ -66,32 +58,4 @@ func (v *rsaTokenValidator) ValidateToken(tokenString string) (*CustomClaims, er
 	}
 
 	return nil, fmt.Errorf("invalid token")
-}
-
-func loadRSAPublicKeyFromFile(path string) (*rsa.PublicKey, error) {
-	keyData, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read RSA public key file: %w", err)
-	}
-
-	block, _ := pem.Decode(keyData)
-	if block == nil {
-		return nil, fmt.Errorf("invalid PEM block in key file")
-	}
-
-	if block.Type != "PUBLIC KEY" {
-		return nil, fmt.Errorf("invalid PEM block type for public key: %s (expected PUBLIC KEY)", block.Type)
-	}
-
-	publicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse public key: %w", err)
-	}
-
-	rsaPublicKey, ok := publicKey.(*rsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("not an RSA public key")
-	}
-
-	return rsaPublicKey, nil
 }
