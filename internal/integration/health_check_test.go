@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/huypham67/bookmark-service/internal/config"
+	"github.com/huypham67/bookmark-service/internal/bootstrap"
 	"github.com/huypham67/bookmark-service/internal/dto/response"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,13 +22,13 @@ func TestHealthCheckEndpoint(t *testing.T) {
 
 	testCases := []struct {
 		name       string
-		appConfig  config.Config
+		appConfig  bootstrap.Config
 		setupRedis func(*TestApp)
 		expected   expected
 	}{
 		{
 			name: "should return 200 OK with successful health check",
-			appConfig: config.Config{
+			appConfig: bootstrap.Config{
 				ServiceName: "bookmark-service",
 				InstanceID:  "instance-1",
 			},
@@ -45,7 +45,7 @@ func TestHealthCheckEndpoint(t *testing.T) {
 		},
 		{
 			name: "should return 500 when redis connection fails",
-			appConfig: config.Config{
+			appConfig: bootstrap.Config{
 				ServiceName: "bookmark-service",
 				InstanceID:  "instance-2",
 			},

@@ -27,6 +27,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 FROM base AS test-exec
 
 ARG COVERAGE_EXCLUDE
+ARG COVERPKG
 ENV _OUTPUTDIR=/tmp/coverage
 
 RUN mkdir -p ${_OUTPUTDIR}
@@ -36,7 +37,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=1 go test ./... \
       -coverprofile=coverage.tmp \
       -covermode=atomic \
-      -coverpkg=./internal/...,./pkg/jwtutils/...,./pkg/security/...,./pkg/utils/... \
+      -coverpkg=${COVERPKG} \
       -p 1 && \
     grep -v -E "${COVERAGE_EXCLUDE}" coverage.tmp > ${_OUTPUTDIR}/coverage.out && \
     go tool cover -html=${_OUTPUTDIR}/coverage.out -o ${_OUTPUTDIR}/coverage.html

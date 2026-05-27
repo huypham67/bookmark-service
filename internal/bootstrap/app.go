@@ -6,7 +6,6 @@ import (
 
 	"github.com/huypham67/bookmark-service/docs"
 	"github.com/huypham67/bookmark-service/internal/api"
-	"github.com/huypham67/bookmark-service/internal/config"
 	"github.com/huypham67/bookmark-service/internal/handler"
 	"github.com/huypham67/bookmark-service/internal/model"
 	"github.com/huypham67/bookmark-service/internal/repository"
@@ -24,7 +23,7 @@ import (
 
 // App represents application runtime container.
 type App struct {
-	config      *config.Config
+	config      *Config
 	router      *api.Router
 	redisClient *redis.Client
 	dbClient    *gorm.DB
@@ -32,11 +31,11 @@ type App struct {
 
 // NewApp initializes application dependencies.
 func NewApp() (*App, error) {
-	if err := logger.Init(""); err != nil {
+	if err := logger.NewLoggerClient(""); err != nil {
 		return nil, err
 	}
 
-	cfg, err := config.LoadConfig()
+	cfg, err := LoadConfig()
 
 	if err != nil {
 		log.Error().
@@ -91,7 +90,7 @@ func NewApp() (*App, error) {
 	}, nil
 }
 
-func registerRoutes(router *api.Router, cfg *config.Config, redisClient *redis.Client, dbClient *gorm.DB) {
+func registerRoutes(router *api.Router, cfg *Config, redisClient *redis.Client, dbClient *gorm.DB) {
 	apiGroup := router.GroupAPI()
 	apiV1Group := router.GroupV1()
 
@@ -123,7 +122,7 @@ func initUserHandler(db *gorm.DB) handler.User {
 	return handler.NewUserHandler(userService)
 }
 
-func initHealthHandler(cfg *config.Config, redisClient *redis.Client) handler.HealthCheck {
+func initHealthHandler(cfg *Config, redisClient *redis.Client) handler.HealthCheck {
 	pinger := ping.NewPinger(redisClient)
 
 	healthService := service.NewHealthCheckService(cfg.ServiceName, cfg.InstanceID, pinger)
@@ -141,13 +140,13 @@ func initLinkHandler(redisClient *redis.Client) handler.Link {
 	return handler.NewLinkHandler(linkService)
 }
 
-func setupSwaggerConfig(cfg *config.Config) {
+func setupSwaggerConfig(cfg *Config) {
 	docs.SwaggerInfo.Host = ""
 	docs.SwaggerInfo.Schemes = getSwaggerSchemes(cfg)
 	docs.SwaggerInfo.BasePath = cfg.HostName
 }
 
-func getSwaggerSchemes(cfg *config.Config) []string {
+func getSwaggerSchemes(cfg *Config) []string {
 	if cfg.SwaggerSchemes != "" {
 		return parseSchemes(cfg.SwaggerSchemes)
 	}
