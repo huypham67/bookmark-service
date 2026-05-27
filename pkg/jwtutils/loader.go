@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-// LoadRSAPrivateKeyFromFile đọc và phân tích cú pháp RSA Private Key từ ổ đĩa (hỗ trợ cả PKCS#1 và PKCS#8).
+// LoadRSAPrivateKeyFromFile loads an RSA private key from a PEM-encoded file.
 func LoadRSAPrivateKeyFromFile(path string) (*rsa.PrivateKey, error) {
 	keyData, err := os.ReadFile(path)
 	if err != nil {
@@ -45,7 +45,7 @@ func LoadRSAPrivateKeyFromFile(path string) (*rsa.PrivateKey, error) {
 	return privateKey, nil
 }
 
-// LoadRSAPublicKeyFromFile đọc và phân tích cú pháp RSA Public Key từ ổ đĩa (hỗ trợ định dạng X.509).
+// LoadRSAPublicKeyFromFile loads an RSA public key from a PEM-encoded file.
 func LoadRSAPublicKeyFromFile(path string) (*rsa.PublicKey, error) {
 	keyData, err := os.ReadFile(path)
 	if err != nil {

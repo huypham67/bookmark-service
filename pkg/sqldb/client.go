@@ -26,7 +26,6 @@ func NewDBClient(envPrefix string) (*gorm.DB, error) {
 	return db, nil
 }
 
-// getDSN builds the PostgreSQL DSN connection string.
 func getDSN(cfg *DBConfig) string {
 	return fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
