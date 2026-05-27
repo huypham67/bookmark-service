@@ -76,7 +76,7 @@ func setupLinkTestApp(t *testing.T) *TestApp {
 func setupUserTestApp(t *testing.T) *TestApp {
 	t.Helper()
 
-	mockDB := testutil.SetupTestDatabase(t)
+	mockDB := testutil.SetupUserTestDatabase(t)
 
 	userRepository := repository.NewUserRepository(mockDB)
 

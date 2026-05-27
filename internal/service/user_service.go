@@ -13,6 +13,11 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	ErrEmailAlreadyRegistered = errors.New("email already registered")
+	ErrUsernameAlreadyExists  = errors.New("username already exists")
+)
+
 // User defines the contract for user services.
 type User interface {
 	RegisterUser(ctx context.Context, req request.RegisterUserRequest) (*model.User, error)
@@ -47,7 +52,7 @@ func (s *userService) RegisterUser(ctx context.Context, req request.RegisterUser
 		log.Warn().
 			Str("email", req.Email).
 			Msg("email already registered")
-		return nil, errors.New("email already registered")
+		return nil, ErrEmailAlreadyRegistered
 	}
 
 	// Check if username already exists
@@ -64,7 +69,7 @@ func (s *userService) RegisterUser(ctx context.Context, req request.RegisterUser
 		log.Warn().
 			Str("username", req.Username).
 			Msg("username already exists")
-		return nil, errors.New("username already exists")
+		return nil, ErrUsernameAlreadyExists
 	}
 
 	// Hash password

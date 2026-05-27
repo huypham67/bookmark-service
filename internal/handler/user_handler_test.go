@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/huypham67/bookmark-service/internal/dto/request"
 	"github.com/huypham67/bookmark-service/internal/model"
+	"github.com/huypham67/bookmark-service/internal/service"
 	serviceMocks "github.com/huypham67/bookmark-service/internal/service/mocks"
 	"github.com/stretchr/testify/assert"
 )
@@ -95,7 +96,7 @@ func TestUserHandler_Register(t *testing.T) {
 							Password:    "password123",
 						},
 					).
-					Return(nil, errors.New("email already registered")).
+					Return(nil, service.ErrEmailAlreadyRegistered).
 					Once()
 			},
 			expected: expected{
@@ -123,7 +124,7 @@ func TestUserHandler_Register(t *testing.T) {
 							Password:    "password123",
 						},
 					).
-					Return(nil, errors.New("username already exists")).
+					Return(nil, service.ErrUsernameAlreadyExists).
 					Once()
 			},
 			expected: expected{
