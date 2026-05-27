@@ -94,7 +94,7 @@ func TestUserRepository_Create(t *testing.T) {
 
 			ctx := context.Background()
 
-			testDB := testutil.SetupTestDatabase(t)
+			testDB := testutil.SetupUserTestDatabase(t)
 			repo := NewUserRepository(testDB)
 
 			err := repo.Create(ctx, &tc.args.user)
@@ -150,7 +150,7 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 
 			ctx := context.Background()
 
-			testDB := testutil.SetupTestDatabase(t)
+			testDB := testutil.SetupUserTestDatabase(t)
 			repo := NewUserRepository(testDB)
 
 			user, err := repo.GetByEmail(ctx, tc.args.email)
@@ -206,7 +206,7 @@ func TestUserRepository_GetByUsername(t *testing.T) {
 
 			ctx := context.Background()
 
-			testDB := testutil.SetupTestDatabase(t)
+			testDB := testutil.SetupUserTestDatabase(t)
 			repo := NewUserRepository(testDB)
 
 			user, err := repo.GetByUsername(ctx, tc.args.username)

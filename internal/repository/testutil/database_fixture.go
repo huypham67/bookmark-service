@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func SetupTestDatabase(t *testing.T) *gorm.DB {
+func SetupUserTestDatabase(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	db := sqldb.CreateMockDB(t)

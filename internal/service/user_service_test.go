@@ -141,7 +141,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 			) {
 				assert.Error(t, err)
 				assert.Nil(t, user)
-				assert.EqualError(t, err, "email already registered")
+				assert.ErrorIs(t, err, ErrEmailAlreadyRegistered)
 			},
 		},
 		{
@@ -217,7 +217,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 			) {
 				assert.Error(t, err)
 				assert.Nil(t, user)
-				assert.EqualError(t, err, "username already exists")
+				assert.ErrorIs(t, err, ErrUsernameAlreadyExists)
 			},
 		},
 		{

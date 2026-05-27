@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -59,7 +60,7 @@ func (h *userHandler) Register(c *gin.Context) {
 			Msg("500 - failed to register user")
 
 		// Check if it's a validation error (email/username exists)
-		if err.Error() == "email already registered" || err.Error() == "username already exists" {
+		if errors.Is(err, service.ErrEmailAlreadyRegistered) || errors.Is(err, service.ErrUsernameAlreadyExists) {
 			c.JSON(http.StatusConflict, gin.H{
 				"error": "User already exists",
 			})
