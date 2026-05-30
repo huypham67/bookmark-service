@@ -12,6 +12,7 @@ const statusMessage = "OK"
 const failedStatusMessage = "FAILED"
 
 // HealthCheck defines the contract for health check services.
+// mockery --name=HealthCheck --dir=internal/service --output=internal/service/mocks --filename=health_service.go
 type HealthCheck interface {
 	GetStatus(ctx context.Context) response.HealthCheckResponse
 }

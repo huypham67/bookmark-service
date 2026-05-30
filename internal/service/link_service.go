@@ -10,6 +10,7 @@ import (
 )
 
 // Link defines the contract for link services.
+// mockery --name=Link --dir=internal/service --output=internal/service/mocks --filename=link_service.go
 type Link interface {
 	ShortenURL(ctx context.Context, request request.ShortenURLRequest) (string, error)
 	GetOriginalURL(ctx context.Context, code string) (string, error)

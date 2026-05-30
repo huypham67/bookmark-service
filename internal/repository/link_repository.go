@@ -8,6 +8,7 @@ import (
 )
 
 // Link defines the contract for link repository operations.
+// mockery --name=Link --dir=internal/repository --output=internal/repository/mocks --filename=link_repository.go
 type Link interface {
 	SaveLink(ctx context.Context, code string, url string, exp int64) error
 	CheckExists(ctx context.Context, code string) (bool, error)

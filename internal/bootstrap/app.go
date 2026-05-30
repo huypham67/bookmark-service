@@ -100,14 +100,16 @@ func registerRoutes(router *api.Router, cfg *Config, redisClient *redis.Client, 
 
 	healthHandler := initHealthHandler(cfg, redisClient)
 	linkHandler := initLinkHandler(redisClient)
-	userHandler := initUserHandler(dbClient)
+	authHandler := initAuthHandler(dbClient)
+	profileHandler := initProfileHandler(dbClient)
 
 	// Initialize JWT middleware for protected routes
 	jwtMiddleware := initJWTMiddleware()
 
 	api.RegisterHealthRoutes(apiGroup, healthHandler)
 	api.RegisterLinkRoutes(apiV1Group, linkHandler)
-	api.RegisterUserRoutes(apiV1Group, userHandler, jwtMiddleware)
+	api.RegisterAuthRoutes(apiV1Group, authHandler)
+	api.RegisterProfileRoutes(apiV1Group, profileHandler, jwtMiddleware)
 }
 
 func initRedisClient() (*redis.Client, error) {
@@ -153,7 +155,7 @@ func initJWTMiddleware() gin.HandlerFunc {
 	return middleware.JWTAuth(tokenValidator)
 }
 
-func initUserHandler(db *gorm.DB) handler.User {
+func initAuthHandler(db *gorm.DB) handler.Auth {
 	userRepository := repository.NewUserRepository(db)
 	passwordHasher := security.NewBcryptPasswordHasher()
 
@@ -174,8 +176,17 @@ func initUserHandler(db *gorm.DB) handler.User {
 		return nil
 	}
 
-	userService := service.NewUserService(userRepository, passwordHasher, tokenGenerator)
-	return handler.NewUserHandler(userService)
+	// Create auth service (for registration and login)
+	authService := service.NewAuthService(userRepository, passwordHasher, tokenGenerator)
+	return handler.NewAuthHandler(authService)
+}
+
+func initProfileHandler(db *gorm.DB) handler.Profile {
+	userRepository := repository.NewUserRepository(db)
+
+	// Create profile service (for getting and updating user info)
+	profileService := service.NewProfileService(userRepository)
+	return handler.NewProfileHandler(profileService)
 }
 
 func initHealthHandler(cfg *Config, redisClient *redis.Client) handler.HealthCheck {

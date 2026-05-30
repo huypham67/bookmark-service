@@ -46,6 +46,15 @@ definitions:
     required:
     - url
     type: object
+  github_com_huypham67_bookmark-service_internal_dto_request.UpdateUserRequest:
+    properties:
+      display_name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      email:
+        type: string
+    type: object
   github_com_huypham67_bookmark-service_internal_dto_response.HealthCheckResponse:
     properties:
       instance_id:
@@ -73,6 +82,11 @@ definitions:
     properties:
       code:
         type: string
+      message:
+        type: string
+    type: object
+  github_com_huypham67_bookmark-service_internal_dto_response.UpdateUserResponse:
+    properties:
       message:
         type: string
     type: object
@@ -204,6 +218,45 @@ paths:
       security:
       - Bearer: []
       summary: Get User Info
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update authenticated user's display name and email
+      parameters:
+      - description: User update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_request.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated successfully
+          schema:
+            $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_response.UpdateUserResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/gin.H'
+        "409":
+          description: Email already exists
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - Bearer: []
+      summary: Update User Info
       tags:
       - users
   /v1/users/login:

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 
 	"github.com/google/uuid"
 	"github.com/huypham67/bookmark-service/internal/dto/request"
@@ -14,29 +13,26 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	ErrEmailAlreadyRegistered = errors.New("email already registered")
-	ErrUsernameAlreadyExists  = errors.New("username already exists")
-	ErrUserNotFound           = errors.New("user not found")
-	ErrInvalidPassword        = errors.New("invalid password")
-)
-
-// User defines the contract for user services.
-type User interface {
+// Auth defines the contract for authentication services.
+// mockery --name=Auth --dir=internal/service --output=internal/service/mocks --filename=auth_service.go
+type Auth interface {
 	RegisterUser(ctx context.Context, req request.RegisterUserRequest) (*model.User, error)
 	LoginUser(ctx context.Context, req request.LoginRequest) (string, error)
-	GetUserInfo(ctx context.Context, userID string) (*model.User, error)
 }
 
-type userService struct {
+type authService struct {
 	userRepo       repository.User
 	passwordHasher security.PasswordHasher
 	tokenGenerator jwtutils.TokenGenerator
 }
 
-// NewUserService creates a new user service with the given user repository, password hasher, and token generator.
-func NewUserService(userRepo repository.User, passwordHasher security.PasswordHasher, tokenGenerator jwtutils.TokenGenerator) User {
-	return &userService{
+// NewAuthService creates a new auth service with the given dependencies.
+func NewAuthService(
+	userRepo repository.User,
+	passwordHasher security.PasswordHasher,
+	tokenGenerator jwtutils.TokenGenerator,
+) Auth {
+	return &authService{
 		userRepo:       userRepo,
 		passwordHasher: passwordHasher,
 		tokenGenerator: tokenGenerator,
@@ -44,7 +40,7 @@ func NewUserService(userRepo repository.User, passwordHasher security.PasswordHa
 }
 
 // RegisterUser registers a new user by validating input, hashing password, and saving to database.
-func (s *userService) RegisterUser(ctx context.Context, req request.RegisterUserRequest) (*model.User, error) {
+func (s *authService) RegisterUser(ctx context.Context, req request.RegisterUserRequest) (*model.User, error) {
 	// Check if email already exists
 	existingUser, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil && err != gorm.ErrRecordNotFound {
@@ -117,7 +113,7 @@ func (s *userService) RegisterUser(ctx context.Context, req request.RegisterUser
 }
 
 // LoginUser authenticates a user by validating credentials and returns a JWT token.
-func (s *userService) LoginUser(ctx context.Context, req request.LoginRequest) (string, error) {
+func (s *authService) LoginUser(ctx context.Context, req request.LoginRequest) (string, error) {
 	user, err := s.userRepo.GetByUsername(ctx, req.Username)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		log.Error().
@@ -158,18 +154,4 @@ func (s *userService) LoginUser(ctx context.Context, req request.LoginRequest) (
 		Msg("user logged in successfully")
 
 	return token, nil
-}
-
-// GetUserInfo retrieves user information by user ID.
-func (s *userService) GetUserInfo(ctx context.Context, userID string) (*model.User, error) {
-	user, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Str("user_id", userID).
-			Msg("failed to get user by ID")
-		return nil, err
-	}
-
-	return user, nil
 }

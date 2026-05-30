@@ -65,26 +65,37 @@ func RegisterLinkRoutes(
 	)
 }
 
-// RegisterUserRoutes registers all user management routes.
-func RegisterUserRoutes(
+// RegisterAuthRoutes registers all authentication routes (registration and login).
+func RegisterAuthRoutes(
 	routerGroup *gin.RouterGroup,
-	userHandler handler.User,
-	jwtMiddleware gin.HandlerFunc,
+	authHandler handler.Auth,
 ) {
 	routerGroup.POST(
 		"/users/register",
-		userHandler.Register,
+		authHandler.Register,
 	)
 
 	routerGroup.POST(
 		"/users/login",
-		userHandler.Login,
+		authHandler.Login,
 	)
+}
 
+func RegisterProfileRoutes(
+	routerGroup *gin.RouterGroup,
+	profileHandler handler.Profile,
+	jwtMiddleware gin.HandlerFunc,
+) {
 	routerGroup.GET(
 		"/self/info",
 		jwtMiddleware,
-		userHandler.GetUserInfo,
+		profileHandler.GetUserInfo,
+	)
+
+	routerGroup.PUT(
+		"/self/info",
+		jwtMiddleware,
+		profileHandler.UpdateUserInfo,
 	)
 }
 

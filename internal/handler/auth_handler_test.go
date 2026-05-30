@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUserHandler_Register(t *testing.T) {
+func TestAuthHandler_Register(t *testing.T) {
 	t.Parallel()
 
 	type expected struct {
@@ -27,19 +27,19 @@ func TestUserHandler_Register(t *testing.T) {
 	testCases := []struct {
 		name        string
 		requestBody string
-		setupMock   func(context.Context, *serviceMocks.User)
+		setupMock   func(context.Context, *serviceMocks.Auth)
 		expected    expected
 	}{
 		{
 			name: "should return 201 when register succeeds",
 			requestBody: `{
-				"display_name": "Test User",
-				"username": "testuser",
-				"email": "test@example.com",
-				"password": "password123"
+				"display_name":"Test User",
+				"username":"testuser",
+				"email":"test@example.com",
+				"password":"password123"
 			}`,
-			setupMock: func(ctx context.Context, mockService *serviceMocks.User) {
-				mockService.
+			setupMock: func(ctx context.Context, mockSvc *serviceMocks.Auth) {
+				mockSvc.
 					On(
 						"RegisterUser",
 						ctx,
@@ -50,12 +50,15 @@ func TestUserHandler_Register(t *testing.T) {
 							Password:    "password123",
 						},
 					).
-					Return(&model.User{
-						ID:          "uuid-123",
-						DisplayName: "Test User",
-						Username:    "testuser",
-						Email:       "test@example.com",
-					}, nil).
+					Return(
+						&model.User{
+							ID:          "user-id",
+							DisplayName: "Test User",
+							Username:    "testuser",
+							Email:       "test@example.com",
+						},
+						nil,
+					).
 					Once()
 			},
 			expected: expected{
@@ -64,13 +67,11 @@ func TestUserHandler_Register(t *testing.T) {
 			},
 		},
 		{
-			name: "should return 400 when validation fails",
+			name: "should return 400 when request body is invalid",
 			requestBody: `{
-				"display_name": "Test User"
+				"display_name":"Test User"
 			}`,
-			setupMock: func(ctx context.Context, mockService *serviceMocks.User) {
-				// No need to set up mock for validation failure
-			},
+			setupMock: func(ctx context.Context, mockSvc *serviceMocks.Auth) {},
 			expected: expected{
 				statusCode:   http.StatusBadRequest,
 				bodyContains: "Invalid request body",
@@ -79,13 +80,13 @@ func TestUserHandler_Register(t *testing.T) {
 		{
 			name: "should return 409 when email already registered",
 			requestBody: `{
-				"display_name": "Test User",
-				"username": "testuser",
-				"email": "existing@example.com",
-				"password": "password123"
+				"display_name":"Test User",
+				"username":"testuser",
+				"email":"existing@example.com",
+				"password":"password123"
 			}`,
-			setupMock: func(ctx context.Context, mockService *serviceMocks.User) {
-				mockService.
+			setupMock: func(ctx context.Context, mockSvc *serviceMocks.Auth) {
+				mockSvc.
 					On(
 						"RegisterUser",
 						ctx,
@@ -107,13 +108,13 @@ func TestUserHandler_Register(t *testing.T) {
 		{
 			name: "should return 409 when username already exists",
 			requestBody: `{
-				"display_name": "Test User",
-				"username": "existinguser",
-				"email": "test@example.com",
-				"password": "password123"
+				"display_name":"Test User",
+				"username":"existinguser",
+				"email":"test@example.com",
+				"password":"password123"
 			}`,
-			setupMock: func(ctx context.Context, mockService *serviceMocks.User) {
-				mockService.
+			setupMock: func(ctx context.Context, mockSvc *serviceMocks.Auth) {
+				mockSvc.
 					On(
 						"RegisterUser",
 						ctx,
@@ -133,15 +134,15 @@ func TestUserHandler_Register(t *testing.T) {
 			},
 		},
 		{
-			name: "should return 500 when service returns error",
+			name: "should return 500 when service returns unexpected error",
 			requestBody: `{
-				"display_name": "Test User",
-				"username": "testuser",
-				"email": "test@example.com",
-				"password": "password123"
+				"display_name":"Test User",
+				"username":"testuser",
+				"email":"test@example.com",
+				"password":"password123"
 			}`,
-			setupMock: func(ctx context.Context, mockService *serviceMocks.User) {
-				mockService.
+			setupMock: func(ctx context.Context, mockSvc *serviceMocks.Auth) {
+				mockSvc.
 					On(
 						"RegisterUser",
 						ctx,
@@ -169,7 +170,9 @@ func TestUserHandler_Register(t *testing.T) {
 			t.Parallel()
 
 			gin.SetMode(gin.TestMode)
-			mockSvc := serviceMocks.NewUser(t)
+
+			mockSvc := serviceMocks.NewAuth(t)
+
 			recorder := httptest.NewRecorder()
 
 			ctx, _ := gin.CreateTestContext(recorder)
@@ -180,21 +183,38 @@ func TestUserHandler_Register(t *testing.T) {
 				strings.NewReader(tc.requestBody),
 			)
 
-			httpRequest.Header.Set("Content-Type", "application/json")
+			httpRequest.Header.Set(
+				"Content-Type",
+				"application/json",
+			)
+
 			ctx.Request = httpRequest
 
 			tc.setupMock(ctx, mockSvc)
 
-			handler := NewUserHandler(mockSvc)
+			handler := NewAuthHandler(mockSvc)
 
 			handler.Register(ctx)
 
-			assert.Equal(t, tc.expected.statusCode, recorder.Code)
-			assert.Equal(t, "application/json; charset=utf-8", recorder.Header().Get("Content-Type"))
-			assert.Contains(t, recorder.Body.String(), tc.expected.bodyContains)
+			assert.Equal(
+				t,
+				tc.expected.statusCode,
+				recorder.Code,
+			)
+
+			assert.Equal(
+				t,
+				"application/json; charset=utf-8",
+				recorder.Header().Get("Content-Type"),
+			)
+
+			assert.Contains(
+				t,
+				recorder.Body.String(),
+				tc.expected.bodyContains,
+			)
 
 			mockSvc.AssertExpectations(t)
 		})
 	}
-
 }

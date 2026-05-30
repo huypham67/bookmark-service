@@ -8,11 +8,13 @@ import (
 )
 
 // User defines the contract for user repository operations.
+// mockery --name=User --dir=internal/repository --output=internal/repository/mocks --filename=user_repository.go
 type User interface {
 	Create(ctx context.Context, user *model.User) error
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	GetByUsername(ctx context.Context, username string) (*model.User, error)
 	GetByID(ctx context.Context, userID string) (*model.User, error)
+	Update(ctx context.Context, user *model.User) error
 }
 
 type userRepository struct {
@@ -56,4 +58,12 @@ func (r *userRepository) GetByID(ctx context.Context, userID string) (*model.Use
 		return nil, err
 	}
 	return user, nil
+}
+
+// Update updates user's display_name and email.
+func (r *userRepository) Update(ctx context.Context, user *model.User) error {
+	return r.db.WithContext(ctx).Model(&model.User{}).Where("id = ?", user.ID).Updates(map[string]interface{}{
+		"display_name": user.DisplayName,
+		"email":        user.Email,
+	}).Error
 }

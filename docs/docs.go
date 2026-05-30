@@ -175,6 +175,67 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Update authenticated user's display name and email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update User Info",
+                "parameters": [
+                    {
+                        "description": "User update data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_huypham67_bookmark-service_internal_dto_request.UpdateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_huypham67_bookmark-service_internal_dto_response.UpdateUserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    },
+                    "409": {
+                        "description": "Email already exists",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    }
+                }
             }
         },
         "/v1/users/login": {
@@ -354,6 +415,19 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_huypham67_bookmark-service_internal_dto_request.UpdateUserRequest": {
+            "type": "object",
+            "properties": {
+                "display_name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 2
+                },
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_huypham67_bookmark-service_internal_dto_response.HealthCheckResponse": {
             "type": "object",
             "properties": {
@@ -396,6 +470,14 @@ const docTemplate = `{
                 "code": {
                     "type": "string"
                 },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_huypham67_bookmark-service_internal_dto_response.UpdateUserResponse": {
+            "type": "object",
+            "properties": {
                 "message": {
                     "type": "string"
                 }

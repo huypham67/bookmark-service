@@ -28,3 +28,8 @@ type UserResponse struct {
 	Data    interface{} `json:"data"`
 	Message string      `json:"message"`
 }
+
+// UpdateUserResponse represents the user update response payload.
+type UpdateUserResponse struct {
+	Message string `json:"message"`
+}

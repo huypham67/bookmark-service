@@ -23,12 +23,12 @@ func TestHealthCheckHandler_GetHealthCheck(t *testing.T) {
 
 	testCases := []struct {
 		name      string
-		setupMock func(context.Context, *mocks.HealthCheckService)
+		setupMock func(context.Context, *mocks.HealthCheck)
 		expected  expected
 	}{
 		{
 			name: "should return 200 OK when health check is successful",
-			setupMock: func(ctx context.Context, m *mocks.HealthCheckService) {
+			setupMock: func(ctx context.Context, m *mocks.HealthCheck) {
 				m.On("GetStatus", ctx).Return(response.HealthCheckResponse{
 					Message:     "OK",
 					ServiceName: "bookmark-service",
@@ -45,7 +45,7 @@ func TestHealthCheckHandler_GetHealthCheck(t *testing.T) {
 			},
 		}, {
 			name: "should return 500 when health check is failed",
-			setupMock: func(ctx context.Context, m *mocks.HealthCheckService) {
+			setupMock: func(ctx context.Context, m *mocks.HealthCheck) {
 				m.On("GetStatus", ctx).Return(response.HealthCheckResponse{Message: "FAILED",
 					ServiceName: "bookmark-service",
 					InstanceID:  "instance-1",
@@ -67,7 +67,7 @@ func TestHealthCheckHandler_GetHealthCheck(t *testing.T) {
 			t.Parallel()
 
 			gin.SetMode(gin.TestMode)
-			mockSvc := mocks.NewHealthCheckService(t)
+			mockSvc := mocks.NewHealthCheck(t)
 
 			handler := NewHealthCheckHandler(mockSvc)
 			recorder := httptest.NewRecorder()

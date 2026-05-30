@@ -3,6 +3,7 @@ package security
 import "golang.org/x/crypto/bcrypt"
 
 // PasswordHasher defines the contract for password hashing operations.
+// mockery --name=PasswordHasher --dir=pkg/security --output=pkg/security/mocks --filename=password_hasher.go
 type PasswordHasher interface {
 	Hash(password string) (string, error)
 	Compare(hashedPassword, password string) error

@@ -8,6 +8,7 @@ import (
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 // CodeGenerator defines the contract for generating random codes.
+// mockery --name=CodeGenerator --dir=pkg/utils --output=pkg/utils/mocks --filename=code_generator.go
 type CodeGenerator interface {
 	Generate(length int) (string, error)
 }

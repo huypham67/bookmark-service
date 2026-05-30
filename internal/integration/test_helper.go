@@ -1,7 +1,10 @@
 package integration
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"testing"
+	"time"
 
 	"github.com/huypham67/bookmark-service/internal/api"
 	"github.com/huypham67/bookmark-service/internal/handler"
@@ -9,9 +12,11 @@ import (
 	"github.com/huypham67/bookmark-service/internal/repository/ping"
 	"github.com/huypham67/bookmark-service/internal/repository/testutil"
 	"github.com/huypham67/bookmark-service/internal/service"
+	"github.com/huypham67/bookmark-service/pkg/jwtutils"
 	"github.com/huypham67/bookmark-service/pkg/redis"
 	"github.com/huypham67/bookmark-service/pkg/security"
 	"github.com/huypham67/bookmark-service/pkg/utils"
+	"github.com/stretchr/testify/require"
 )
 
 // TestApp represents the test application with its dependencies.
@@ -73,7 +78,24 @@ func setupLinkTestApp(t *testing.T) *TestApp {
 	}
 }
 
-func setupUserTestApp(t *testing.T) *TestApp {
+func createTestTokenGenerator(t *testing.T) jwtutils.TokenGenerator {
+	t.Helper()
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	generator, err := jwtutils.NewTokenGenerator(
+		privateKey,
+		"test-issuer",
+		"test-audience",
+		time.Hour,
+	)
+	require.NoError(t, err)
+
+	return generator
+}
+
+func setupAuthTestApp(t *testing.T) *TestApp {
 	t.Helper()
 
 	mockDB := testutil.SetupUserTestDatabase(t)
@@ -82,15 +104,17 @@ func setupUserTestApp(t *testing.T) *TestApp {
 
 	passwordHasher := security.NewBcryptPasswordHasher()
 
-	userService := service.NewUserService(userRepository, passwordHasher)
+	tokenGenerator := createTestTokenGenerator(t)
 
-	userHandler := handler.NewUserHandler(userService)
+	authService := service.NewAuthService(userRepository, passwordHasher, tokenGenerator)
+
+	authHandler := handler.NewAuthHandler(authService)
 
 	router := api.NewRouter()
 
-	api.RegisterUserRoutes(
+	api.RegisterAuthRoutes(
 		router.GroupV1(),
-		userHandler,
+		authHandler,
 	)
 
 	return &TestApp{

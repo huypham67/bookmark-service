@@ -7,6 +7,7 @@ import (
 	"github.com/huypham67/bookmark-service/internal/dto/request"
 	"github.com/huypham67/bookmark-service/internal/model"
 	repositoryMocks "github.com/huypham67/bookmark-service/internal/repository/mocks"
+	jwtutilsMocks "github.com/huypham67/bookmark-service/pkg/jwtutils/mocks"
 	securityMocks "github.com/huypham67/bookmark-service/pkg/security/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -14,7 +15,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func expectedRegisteredUser() *model.User {
+func expectedAuthRegisteredUser() *model.User {
 	return &model.User{
 		DisplayName: "Test Display Name",
 		Username:    "testuser",
@@ -23,7 +24,7 @@ func expectedRegisteredUser() *model.User {
 	}
 }
 
-func matchUser(expected *model.User) interface{} {
+func matchAuthUser(expected *model.User) interface{} {
 	return mock.MatchedBy(func(actual *model.User) bool {
 		return actual.DisplayName == expected.DisplayName &&
 			actual.Username == expected.Username &&
@@ -33,7 +34,7 @@ func matchUser(expected *model.User) interface{} {
 	})
 }
 
-func TestUserService_RegisterUser(t *testing.T) {
+func TestAuthService_RegisterUser(t *testing.T) {
 	t.Parallel()
 
 	type args struct {
@@ -43,7 +44,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 	testCases := []struct {
 		name           string
 		args           args
-		setupMocks     func(context.Context, *repositoryMocks.User, *securityMocks.PasswordHasher)
+		setupMocks     func(context.Context, *repositoryMocks.User, *securityMocks.PasswordHasher, *jwtutilsMocks.TokenGenerator)
 		verifyResponse func(*testing.T, *model.User, error)
 	}{
 		{
@@ -60,13 +61,14 @@ func TestUserService_RegisterUser(t *testing.T) {
 				ctx context.Context,
 				userRepo *repositoryMocks.User,
 				passwordHasher *securityMocks.PasswordHasher,
+				tokenGenerator *jwtutilsMocks.TokenGenerator,
 			) {
 				passwordHasher.
 					On("Hash", "password123").
 					Return("$2a$10$hashedpassword123456789", nil).
 					Once()
 
-				expectedUser := expectedRegisteredUser()
+				expectedUser := expectedAuthRegisteredUser()
 
 				userRepo.
 					On(
@@ -90,7 +92,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 					On(
 						"Create",
 						ctx,
-						matchUser(expectedUser),
+						matchAuthUser(expectedUser),
 					).
 					Return(nil).
 					Once()
@@ -124,6 +126,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 				ctx context.Context,
 				userRepo *repositoryMocks.User,
 				passwordHasher *securityMocks.PasswordHasher,
+				tokenGenerator *jwtutilsMocks.TokenGenerator,
 			) {
 				userRepo.
 					On(
@@ -158,6 +161,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 				ctx context.Context,
 				userRepo *repositoryMocks.User,
 				passwordHasher *securityMocks.PasswordHasher,
+				tokenGenerator *jwtutilsMocks.TokenGenerator,
 			) {
 				userRepo.
 					On(
@@ -192,6 +196,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 				ctx context.Context,
 				userRepo *repositoryMocks.User,
 				passwordHasher *securityMocks.PasswordHasher,
+				tokenGenerator *jwtutilsMocks.TokenGenerator,
 			) {
 				userRepo.
 					On(
@@ -234,6 +239,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 				ctx context.Context,
 				userRepo *repositoryMocks.User,
 				passwordHasher *securityMocks.PasswordHasher,
+				tokenGenerator *jwtutilsMocks.TokenGenerator,
 			) {
 				userRepo.
 					On(
@@ -275,6 +281,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 				ctx context.Context,
 				userRepo *repositoryMocks.User,
 				passwordHasher *securityMocks.PasswordHasher,
+				tokenGenerator *jwtutilsMocks.TokenGenerator,
 			) {
 				passwordHasher.
 					On("Hash", "password123").
@@ -321,13 +328,14 @@ func TestUserService_RegisterUser(t *testing.T) {
 				ctx context.Context,
 				userRepo *repositoryMocks.User,
 				passwordHasher *securityMocks.PasswordHasher,
+				tokenGenerator *jwtutilsMocks.TokenGenerator,
 			) {
 				passwordHasher.
 					On("Hash", "password123").
 					Return("$2a$10$hashedpassword123456789", nil).
 					Once()
 
-				expectedUser := expectedRegisteredUser()
+				expectedUser := expectedAuthRegisteredUser()
 
 				userRepo.
 					On(
@@ -351,7 +359,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 					On(
 						"Create",
 						ctx,
-						matchUser(expectedUser),
+						matchAuthUser(expectedUser),
 					).
 					Return(assert.AnError).
 					Once()
@@ -378,12 +386,13 @@ func TestUserService_RegisterUser(t *testing.T) {
 
 			userRepo := new(repositoryMocks.User)
 			passwordHasher := securityMocks.NewPasswordHasher(t)
+			tokenGenerator := jwtutilsMocks.NewTokenGenerator(t)
 
-			tc.setupMocks(ctx, userRepo, passwordHasher)
+			tc.setupMocks(ctx, userRepo, passwordHasher, tokenGenerator)
 
-			userService := NewUserService(userRepo, passwordHasher)
+			authService := NewAuthService(userRepo, passwordHasher, tokenGenerator)
 
-			user, err := userService.RegisterUser(
+			user, err := authService.RegisterUser(
 				ctx,
 				tc.args.request,
 			)

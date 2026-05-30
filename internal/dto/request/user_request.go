@@ -13,3 +13,9 @@ type LoginRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required,min=8"`
 }
+
+// UpdateUserRequest represents the user update request payload for updating user information.
+type UpdateUserRequest struct {
+	DisplayName string `json:"display_name" binding:"omitempty,min=2,max=100"`
+	Email       string `json:"email" binding:"omitempty,email"`
+}

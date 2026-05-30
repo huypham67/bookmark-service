@@ -39,7 +39,7 @@ func TestCreateUserEndpoint(t *testing.T) {
 			},
 		},
 		{
-			name: "should return 400 when request body is invalid JSON",
+			name:        "should return 400 when request body is invalid JSON",
 			requestBody: `{invalid json}`,
 			expected: expected{
 				statusCode:   http.StatusBadRequest,
@@ -126,7 +126,7 @@ func TestCreateUserEndpoint(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			app := setupUserTestApp(t)
+			app := setupAuthTestApp(t)
 
 			httpRequest := httptest.NewRequest(http.MethodPost, "/api/bookmark_service/v1/users/register", bytes.NewBufferString(tc.requestBody))
 
