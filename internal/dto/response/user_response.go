@@ -16,3 +16,15 @@ type RegisterUserResponse struct {
 	Data    UserData `json:"data"`
 	Message string   `json:"message"`
 }
+
+// LoginResponse represents the user login response payload.
+type LoginResponse struct {
+	Data    string `json:"data"`
+	Message string `json:"message"`
+}
+
+// UserResponse represents the user info response payload.
+type UserResponse struct {
+	Data    interface{} `json:"data"`
+	Message string      `json:"message"`
+}

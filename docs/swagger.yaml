@@ -2,6 +2,17 @@ definitions:
   gin.H:
     additionalProperties: {}
     type: object
+  github_com_huypham67_bookmark-service_internal_dto_request.LoginRequest:
+    properties:
+      password:
+        minLength: 8
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
   github_com_huypham67_bookmark-service_internal_dto_request.RegisterUserRequest:
     properties:
       display_name:
@@ -44,6 +55,13 @@ definitions:
       service_name:
         type: string
     type: object
+  github_com_huypham67_bookmark-service_internal_dto_response.LoginResponse:
+    properties:
+      data:
+        type: string
+      message:
+        type: string
+    type: object
   github_com_huypham67_bookmark-service_internal_dto_response.RegisterUserResponse:
     properties:
       data:
@@ -69,6 +87,12 @@ definitions:
       id:
         type: string
       username:
+        type: string
+    type: object
+  github_com_huypham67_bookmark-service_internal_dto_response.UserResponse:
+    properties:
+      data: {}
+      message:
         type: string
     type: object
 info:
@@ -153,6 +177,73 @@ paths:
       summary: Shorten URL
       tags:
       - links
+  /v1/self/info:
+    get:
+      consumes:
+      - application/json
+      description: Get authenticated user information from JWT token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User information
+          schema:
+            $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_response.UserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/gin.H'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - Bearer: []
+      summary: Get User Info
+      tags:
+      - users
+  /v1/users/login:
+    post:
+      consumes:
+      - application/json
+      description: Login a user with username and password
+      parameters:
+      - description: User login data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_request.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User logged in successfully
+          schema:
+            $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_response.LoginResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/gin.H'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Login User
+      tags:
+      - users
   /v1/users/register:
     post:
       consumes:
@@ -188,7 +279,8 @@ paths:
       tags:
       - users
 securityDefinitions:
-  BearerAuth:
+  Bearer:
+    description: Type "Bearer" followed by a space and JWT token.
     in: header
     name: Authorization
     type: apiKey

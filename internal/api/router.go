@@ -69,10 +69,22 @@ func RegisterLinkRoutes(
 func RegisterUserRoutes(
 	routerGroup *gin.RouterGroup,
 	userHandler handler.User,
+	jwtMiddleware gin.HandlerFunc,
 ) {
 	routerGroup.POST(
 		"/users/register",
 		userHandler.Register,
+	)
+
+	routerGroup.POST(
+		"/users/login",
+		userHandler.Login,
+	)
+
+	routerGroup.GET(
+		"/self/info",
+		jwtMiddleware,
+		userHandler.GetUserInfo,
 	)
 }
 

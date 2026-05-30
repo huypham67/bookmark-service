@@ -3,14 +3,18 @@ package bootstrap
 import (
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/huypham67/bookmark-service/docs"
 	"github.com/huypham67/bookmark-service/internal/api"
 	"github.com/huypham67/bookmark-service/internal/handler"
+	"github.com/huypham67/bookmark-service/internal/middleware"
 	"github.com/huypham67/bookmark-service/internal/model"
 	"github.com/huypham67/bookmark-service/internal/repository"
 	"github.com/huypham67/bookmark-service/internal/repository/ping"
 	"github.com/huypham67/bookmark-service/internal/service"
+	"github.com/huypham67/bookmark-service/pkg/jwtutils"
 	"github.com/huypham67/bookmark-service/pkg/logger"
 	pkgRedis "github.com/huypham67/bookmark-service/pkg/redis"
 	"github.com/huypham67/bookmark-service/pkg/security"
@@ -98,9 +102,12 @@ func registerRoutes(router *api.Router, cfg *Config, redisClient *redis.Client, 
 	linkHandler := initLinkHandler(redisClient)
 	userHandler := initUserHandler(dbClient)
 
+	// Initialize JWT middleware for protected routes
+	jwtMiddleware := initJWTMiddleware()
+
 	api.RegisterHealthRoutes(apiGroup, healthHandler)
 	api.RegisterLinkRoutes(apiV1Group, linkHandler)
-	api.RegisterUserRoutes(apiV1Group, userHandler)
+	api.RegisterUserRoutes(apiV1Group, userHandler, jwtMiddleware)
 }
 
 func initRedisClient() (*redis.Client, error) {
@@ -115,10 +122,59 @@ func runMigrations(db *gorm.DB) error {
 	return db.AutoMigrate(&model.User{})
 }
 
+func initJWTMiddleware() gin.HandlerFunc {
+	// Load public key for JWT token validation
+	publicKey, err := jwtutils.LoadRSAPublicKeyFromFile("keys/public.pem")
+	if err != nil {
+		log.Error().
+			Err(err).
+			Msg("failed to load public key for JWT")
+		return func(c *gin.Context) {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Internal server error",
+			})
+			c.Abort()
+		}
+	}
+
+	tokenValidator, err := jwtutils.NewTokenValidator(publicKey, "bookmark-service", "bookmark-service")
+	if err != nil {
+		log.Error().
+			Err(err).
+			Msg("failed to create token validator")
+		return func(c *gin.Context) {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Internal server error",
+			})
+			c.Abort()
+		}
+	}
+
+	return middleware.JWTAuth(tokenValidator)
+}
+
 func initUserHandler(db *gorm.DB) handler.User {
 	userRepository := repository.NewUserRepository(db)
 	passwordHasher := security.NewBcryptPasswordHasher()
-	userService := service.NewUserService(userRepository, passwordHasher)
+
+	// Load private key for JWT token generation
+	privateKey, err := jwtutils.LoadRSAPrivateKeyFromFile("keys/private.pem")
+	if err != nil {
+		log.Error().
+			Err(err).
+			Msg("failed to load private key for JWT")
+		return nil
+	}
+
+	tokenGenerator, err := jwtutils.NewTokenGenerator(privateKey, "bookmark-service", "bookmark-service", time.Hour*1)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Msg("failed to create token generator")
+		return nil
+	}
+
+	userService := service.NewUserService(userRepository, passwordHasher, tokenGenerator)
 	return handler.NewUserHandler(userService)
 }
 

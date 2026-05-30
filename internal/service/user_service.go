@@ -8,6 +8,7 @@ import (
 	"github.com/huypham67/bookmark-service/internal/dto/request"
 	"github.com/huypham67/bookmark-service/internal/model"
 	"github.com/huypham67/bookmark-service/internal/repository"
+	"github.com/huypham67/bookmark-service/pkg/jwtutils"
 	"github.com/huypham67/bookmark-service/pkg/security"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
@@ -16,23 +17,29 @@ import (
 var (
 	ErrEmailAlreadyRegistered = errors.New("email already registered")
 	ErrUsernameAlreadyExists  = errors.New("username already exists")
+	ErrUserNotFound           = errors.New("user not found")
+	ErrInvalidPassword        = errors.New("invalid password")
 )
 
 // User defines the contract for user services.
 type User interface {
 	RegisterUser(ctx context.Context, req request.RegisterUserRequest) (*model.User, error)
+	LoginUser(ctx context.Context, req request.LoginRequest) (string, error)
+	GetUserInfo(ctx context.Context, userID string) (*model.User, error)
 }
 
 type userService struct {
 	userRepo       repository.User
 	passwordHasher security.PasswordHasher
+	tokenGenerator jwtutils.TokenGenerator
 }
 
-// NewUserService creates a new user service with the given user repository and password hasher.
-func NewUserService(userRepo repository.User, passwordHasher security.PasswordHasher) User {
+// NewUserService creates a new user service with the given user repository, password hasher, and token generator.
+func NewUserService(userRepo repository.User, passwordHasher security.PasswordHasher, tokenGenerator jwtutils.TokenGenerator) User {
 	return &userService{
 		userRepo:       userRepo,
 		passwordHasher: passwordHasher,
+		tokenGenerator: tokenGenerator,
 	}
 }
 
@@ -105,6 +112,64 @@ func (s *userService) RegisterUser(ctx context.Context, req request.RegisterUser
 		Str("email", user.Email).
 		Str("username", user.Username).
 		Msg("user registered successfully")
+
+	return user, nil
+}
+
+// LoginUser authenticates a user by validating credentials and returns a JWT token.
+func (s *userService) LoginUser(ctx context.Context, req request.LoginRequest) (string, error) {
+	user, err := s.userRepo.GetByUsername(ctx, req.Username)
+	if err != nil && err != gorm.ErrRecordNotFound {
+		log.Error().
+			Err(err).
+			Str("username", req.Username).
+			Msg("failed to get user by username")
+		return "", err
+	}
+
+	if user == nil {
+		log.Warn().
+			Str("username", req.Username).
+			Msg("user not found")
+		return "", ErrUserNotFound
+	}
+
+	// Validate password
+	if err := s.passwordHasher.Compare(user.Password, req.Password); err != nil {
+		log.Warn().
+			Str("username", req.Username).
+			Msg("invalid password")
+		return "", ErrInvalidPassword
+	}
+
+	// Generate JWT token
+	token, err := s.tokenGenerator.GenerateToken(user.ID, user.DisplayName, user.Email)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("user_id", user.ID).
+			Msg("failed to generate token")
+		return "", err
+	}
+
+	log.Info().
+		Str("user_id", user.ID).
+		Str("username", user.Username).
+		Msg("user logged in successfully")
+
+	return token, nil
+}
+
+// GetUserInfo retrieves user information by user ID.
+func (s *userService) GetUserInfo(ctx context.Context, userID string) (*model.User, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("user_id", userID).
+			Msg("failed to get user by ID")
+		return nil, err
+	}
 
 	return user, nil
 }

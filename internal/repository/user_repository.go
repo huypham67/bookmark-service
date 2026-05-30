@@ -12,6 +12,7 @@ type User interface {
 	Create(ctx context.Context, user *model.User) error
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	GetByUsername(ctx context.Context, username string) (*model.User, error)
+	GetByID(ctx context.Context, userID string) (*model.User, error)
 }
 
 type userRepository struct {
@@ -43,6 +44,15 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*model.U
 func (r *userRepository) GetByUsername(ctx context.Context, username string) (*model.User, error) {
 	var user *model.User
 	if err := r.db.WithContext(ctx).Where("username = ?", username).First(&user).Error; err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// GetByID retrieves a user by their ID.
+func (r *userRepository) GetByID(ctx context.Context, userID string) (*model.User, error) {
+	var user *model.User
+	if err := r.db.WithContext(ctx).Where("id = ?", userID).First(&user).Error; err != nil {
 		return nil, err
 	}
 	return user, nil

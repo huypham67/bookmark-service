@@ -11,9 +11,10 @@ import (
 // @version 1.1
 // @description This is the API documentation for the Bookmark Service
 
-// @securityDefinitions.apikey BearerAuth
+// @securityDefinitions.apikey Bearer
 // @in header
 // @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 func main() {
 	app, err := bootstrap.NewApp()
 	if err != nil {
