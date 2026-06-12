@@ -185,9 +185,6 @@ help:
 	@echo "  make docker-build    Build image"
 	@echo "  make docker-run      Run container"
 	@echo "  make docker-stop     Stop container"
-	@echo ""
-	@echo "Keys:"
-	@echo "  make gen-keys-local  Generate keys locally"
 
 run:
 	@echo "Starting $(APP_NAME)..."
@@ -378,7 +375,7 @@ migrate-version:
 # UTILITIES
 # =============================================================================
 
-.PHONY: swagger install-tools info clean clean-docs clean-all gen-keys-local generate-mocks clean-mocks
+.PHONY: swagger install-tools info clean clean-docs clean-all generate-mocks clean-mocks
 
 swagger:
 	@which swag > /dev/null || (echo "Error: swag not found. Run: make install-tools"; exit 1)
@@ -394,11 +391,6 @@ info:
 	@echo "Commit:    $(COMMIT)"
 	@echo "Built:     $(BUILD_TIME)"
 	@echo "Go:        $$($(GO) version)"
-
-gen-keys-local:
-	mkdir -p $(LOCAL_KEYS_DIR)
-	openssl genpkey -algorithm RSA -out $(LOCAL_KEYS_DIR)/private.pem -pkeyopt rsa_keygen_bits:2048
-	openssl rsa -pubout -in $(LOCAL_KEYS_DIR)/private.pem -out $(LOCAL_KEYS_DIR)/public.pem
 
 generate-mocks:
 	@echo "Generating mocks for bookmark repository..."

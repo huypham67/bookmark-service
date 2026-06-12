@@ -71,13 +71,13 @@ func NewContainer() (*Container, error) {
 		return nil, err
 	}
 
-	jwtProvider, err := jwtprovider.New("")
+	tokenValidator, err := jwtprovider.NewValidator("")
 	if err != nil {
-		log.Error().Err(err).Msg("failed to initialize jwt provider")
+		log.Error().Err(err).Msg("failed to initialize jwt validator")
 		return nil, err
 	}
 
-	jwtMiddleware := middleware.JWTAuth(jwtProvider.Validator())
+	jwtMiddleware := middleware.JWTAuth(tokenValidator)
 
 	rateLimiter, err := ratelimitprovider.New(rdb, "")
 	if err != nil {

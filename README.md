@@ -27,7 +27,7 @@ Production-ready REST API service for bookmark and short-link management. Part o
 | Cache / Links | Redis | v9.19.0 |
 | Auth | JWT (RSA, validation) | v5.3.1 |
 | Logger | Zerolog | v1.35.1 |
-| Shared Library | bookmark-common | v0.1.0 |
+| Shared Library | bookmark-common | v0.2.0 |
 | API Docs | Swagger (swaggo/gin-swagger) | v1.6.1 |
 | Testing | Testify | v1.11.1 |
 
@@ -36,7 +36,8 @@ Production-ready REST API service for bookmark and short-link management. Part o
 ```bash
 cd bookmark-service
 go mod download
-make gen-keys-local    # JWT RSA keys (public key must match user-service's signer in prod)
+# Validator only: bookmark-service needs ONLY user-service's PUBLIC key.
+cp ../user-service/keys/public.pem keys/public.pem   # no private key here
 createdb bookmark_db
 make migrate-up        # apply migrations
 make run               # build + run
@@ -134,10 +135,10 @@ Run `make help` for the full list. Grouped:
 - **Build**: `build` · `build-linux` · `build-macos` · `build-windows` · `build-prod` · `release`
 - **Mocks**: `generate-mocks` · `clean-mocks`
 - **Docker / CI**: `docker-test` · `docker-sonar` · `docker-build-push` · `docker-run` · `docker-stop` · `docker-logs` · `docker-shell` · `docker-clean`
-- **Utilities**: `swagger` · `gen-keys-local` · `install-tools` · `info` · `clean` · `clean-all`
+- **Utilities**: `swagger` · `install-tools` · `info` · `clean` · `clean-all`
 
 The **Makefile is the single source of truth** for coverage/quality-gate exclusions (`INFRA_DIRS` / `SYSTEM_DIRS`); `sonar-project.properties` carries identity/scope only.
 
 ## 🔗 Integration
 
-Consumes `github.com/huypham67/bookmark-common` v0.1.0 for JWT middleware, Redis/SQL clients, rate limiting, logging, short-code, and response utilities. `user_id` values originate from `user-service`; there is intentionally **no foreign key** between the two databases.
+Consumes `github.com/huypham67/bookmark-common` v0.2.0 for JWT middleware, Redis/SQL clients, rate limiting, logging, short-code, and response utilities. `user_id` values originate from `user-service`; there is intentionally **no foreign key** between the two databases.
