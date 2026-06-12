@@ -1,0 +1,113 @@
+package api
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	"github.com/huypham67/bookmark-service/internal/handler/bookmark"
+	"github.com/huypham67/bookmark-service/internal/handler/health"
+	"github.com/huypham67/bookmark-service/internal/handler/link"
+)
+
+// Router wraps the Gin engine and application server configuration.
+type Router struct {
+	engine *gin.Engine
+}
+
+// NewRouter creates and configures a new HTTP router with all API endpoints.
+func NewRouter() *Router {
+	engine := gin.Default()
+
+	engine.GET(
+		"/swagger/*any",
+		ginSwagger.WrapHandler(swaggerFiles.Handler),
+	)
+
+	return &Router{
+		engine: engine,
+	}
+}
+
+// GroupAPI returns a router group for endpoints (no /api prefix - handled by API Gateway).
+func (r *Router) GroupAPI() *gin.RouterGroup {
+	return r.engine.Group("/api/bookmark_service")
+}
+
+// GroupV1 returns a router group for API version 1 endpoints.
+func (r *Router) GroupV1() *gin.RouterGroup {
+	return r.GroupAPI().Group("/v1")
+}
+
+// RegisterHealthRoutes registers all health check routes.
+func RegisterHealthRoutes(
+	apiGroup *gin.RouterGroup,
+	handler health.Handler,
+) {
+	apiGroup.GET(
+		"/health-check",
+		handler.GetHealthCheck,
+	)
+}
+
+// RegisterLinkRoutes registers all link management routes.
+func RegisterLinkRoutes(
+	routerGroup *gin.RouterGroup,
+	handler link.Handler,
+) {
+	routerGroup.POST(
+		"/links/shorten",
+		handler.ShortenURL,
+	)
+
+	routerGroup.GET(
+		"/links/redirect/:code",
+		handler.RedirectToURL,
+	)
+}
+
+// RegisterBookmarkRoutes registers all bookmark routes.
+func RegisterBookmarkRoutes(
+	routerGroup *gin.RouterGroup,
+	handler bookmark.Handler,
+	jwtMiddleware gin.HandlerFunc,
+) {
+	routerGroup.POST(
+		"/bookmarks",
+		jwtMiddleware,
+		handler.Create,
+	)
+
+	routerGroup.GET(
+		"/bookmarks",
+		jwtMiddleware,
+		handler.List,
+	)
+
+	routerGroup.PUT(
+		"/bookmarks/:id",
+		jwtMiddleware,
+		handler.Update,
+	)
+
+	routerGroup.DELETE(
+		"/bookmarks/:id",
+		jwtMiddleware,
+		handler.Delete,
+	)
+}
+
+// ServeHTTP implements the http.Handler interface.
+func (r *Router) ServeHTTP(
+	writer http.ResponseWriter,
+	request *http.Request,
+) {
+	r.engine.ServeHTTP(writer, request)
+}
+
+// Engine exposes underlying Gin engine
+func (r *Router) Engine() *gin.Engine {
+	return r.engine
+}

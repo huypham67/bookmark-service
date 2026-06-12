@@ -1,0 +1,353 @@
+definitions:
+  gin.H:
+    additionalProperties: {}
+    type: object
+  github_com_huypham67_bookmark-service_internal_dto_bookmark.BookmarkData:
+    properties:
+      code:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      updated_at:
+        type: string
+      url:
+        type: string
+    type: object
+  github_com_huypham67_bookmark-service_internal_dto_bookmark.BookmarkListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_bookmark.BookmarkData'
+        type: array
+      message:
+        type: string
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  github_com_huypham67_bookmark-service_internal_dto_bookmark.BookmarkResponse:
+    properties:
+      data:
+        $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_bookmark.BookmarkData'
+      message:
+        type: string
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  github_com_huypham67_bookmark-service_internal_dto_bookmark.CreateBookmarkRequest:
+    properties:
+      description:
+        maxLength: 500
+        minLength: 2
+        type: string
+      url:
+        type: string
+    required:
+    - description
+    - url
+    type: object
+  github_com_huypham67_bookmark-service_internal_dto_health.HealthCheckResponse:
+    properties:
+      instance_id:
+        type: string
+      message:
+        type: string
+      service_name:
+        type: string
+    type: object
+  github_com_huypham67_bookmark-service_internal_dto_link.ShortenURLRequest:
+    properties:
+      exp:
+        maximum: 86400
+        minimum: 0
+        type: integer
+      url:
+        maxLength: 2048
+        type: string
+    required:
+    - url
+    type: object
+  github_com_huypham67_bookmark-service_internal_dto_link.ShortenURLResponse:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    type: object
+  response.Pagination:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
+info:
+  contact: {}
+  description: This is the API documentation for the Bookmark Service
+  title: Bookmark Service API
+  version: "1.1"
+paths:
+  /health-check:
+    get:
+      consumes:
+      - application/json
+      description: Check application health status and Redis connection
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_health.HealthCheckResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_health.HealthCheckResponse'
+      summary: Health Check
+      tags:
+      - health
+  /v1/bookmarks:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of bookmarks for the authenticated user
+      parameters:
+      - default: 1
+        description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 'Items per page, max 100 (default: 10)'
+        in: query
+        name: limit
+        type: integer
+      - default: created_at
+        description: 'Sort field: created_at, updated_at, code, url (default: created_at)'
+        enum:
+        - created_at
+        - updated_at
+        - code
+        - url
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of bookmarks with pagination
+          schema:
+            $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_bookmark.BookmarkListResponse'
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - Bearer: []
+      summary: List Bookmarks
+      tags:
+      - bookmarks
+    post:
+      consumes:
+      - application/json
+      description: Create a new bookmark for the authenticated user
+      parameters:
+      - description: Bookmark creation data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_bookmark.CreateBookmarkRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Bookmark created successfully
+          schema:
+            $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_bookmark.BookmarkResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/gin.H'
+        "409":
+          description: Bookmark code already exists
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - Bearer: []
+      summary: Create Bookmark
+      tags:
+      - bookmarks
+  /v1/bookmarks/{id}:
+    delete:
+      description: Delete an existing bookmark
+      parameters:
+      - description: Bookmark ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Bookmark deleted successfully
+          schema:
+            $ref: '#/definitions/gin.H'
+        "400":
+          description: Invalid bookmark ID
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/gin.H'
+        "404":
+          description: Bookmark not found
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - Bearer: []
+      summary: Delete Bookmark
+      tags:
+      - bookmarks
+    put:
+      consumes:
+      - application/json
+      description: Update an existing bookmark (description and/or URL)
+      parameters:
+      - description: Bookmark ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated bookmark data
+        in: body
+        name: request
+        schema:
+          properties:
+            description:
+              type: string
+            url:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Bookmark updated successfully
+          schema:
+            $ref: '#/definitions/gin.H'
+        "400":
+          description: Invalid bookmark ID or request data
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/gin.H'
+        "404":
+          description: Bookmark not found
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - Bearer: []
+      summary: Update Bookmark
+      tags:
+      - bookmarks
+  /v1/links/redirect/{code}:
+    get:
+      consumes:
+      - application/json
+      description: 'Redirect user to the original URL for a given code. The code''s
+        routing prefix selects the backing store: shortened links resolve from Redis,
+        bookmarks resolve from the database.'
+      parameters:
+      - description: 'Short code (prefixed: a-h for links, i-z for bookmarks)'
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect successful
+        "404":
+          description: Short link not found
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Redirect to Original URL
+      tags:
+      - links
+  /v1/links/shorten:
+    post:
+      consumes:
+      - application/json
+      description: Create a shortened URL code and save it to Redis
+      parameters:
+      - description: URL to shorten
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_link.ShortenURLRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Shorten URL generated successfully
+          schema:
+            $ref: '#/definitions/github_com_huypham67_bookmark-service_internal_dto_link.ShortenURLResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Shorten URL
+      tags:
+      - links
+securityDefinitions:
+  Bearer:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

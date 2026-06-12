@@ -1,0 +1,106 @@
+package health
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	healthDTO "github.com/huypham67/bookmark-service/internal/dto/health"
+	"github.com/huypham67/bookmark-service/internal/repository/ping/mocks"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestService_GetStatus(t *testing.T) {
+	t.Parallel()
+
+	type fields struct {
+		serviceName string
+		instanceID  string
+	}
+
+	testCases := []struct {
+		name           string
+		fields         fields
+		setupMock      func(context.Context, *mocks.Pinger)
+		verifyResponse func(*testing.T, healthDTO.HealthCheckResponse)
+	}{
+		{
+			name: "should return OK when redis ping succeeds",
+			fields: fields{
+				serviceName: "bookmark-service",
+				instanceID:  "instance-1",
+			},
+			setupMock: func(ctx context.Context, mp *mocks.Pinger) {
+				mp.On("Ping", ctx).Return(nil).Once()
+			},
+			verifyResponse: func(t *testing.T, res healthDTO.HealthCheckResponse) {
+				assert.Equal(t, statusMessage, res.Message)
+				assert.Equal(t, "bookmark-service", res.ServiceName)
+				assert.Equal(t, "instance-1", res.InstanceID)
+			},
+		},
+		{
+			name: "should return FAILED when ping fails",
+			fields: fields{
+				serviceName: "bookmark-service",
+				instanceID:  "instance-1",
+			},
+			setupMock: func(ctx context.Context, mp *mocks.Pinger) {
+				mp.On("Ping", ctx).
+					Return(errors.New("redis connection failed")).
+					Once()
+			},
+			verifyResponse: func(t *testing.T, res healthDTO.HealthCheckResponse) {
+				assert.Equal(t, failedStatusMessage, res.Message)
+				assert.Equal(t, "bookmark-service", res.ServiceName)
+				assert.Equal(t, "instance-1", res.InstanceID)
+			},
+		},
+		{
+			name: "should return FAILED when context is cancelled",
+			fields: fields{
+				serviceName: "bookmark-service",
+				instanceID:  "instance-1",
+			},
+			setupMock: func(ctx context.Context, mp *mocks.Pinger) {
+				mp.On("Ping", ctx).
+					Return(context.Canceled).
+					Once()
+			},
+			verifyResponse: func(t *testing.T, res healthDTO.HealthCheckResponse) {
+				assert.Equal(t, failedStatusMessage, res.Message)
+				assert.Equal(t, "bookmark-service", res.ServiceName)
+				assert.Equal(t, "instance-1", res.InstanceID)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var ctx context.Context
+			mp := &mocks.Pinger{}
+
+			// For context cancellation test, create a cancelled context
+			if tc.name == "should return FAILED when context is cancelled" {
+				cancelledCtx, cancel := context.WithCancel(context.Background())
+				cancel()
+				ctx = cancelledCtx
+			} else {
+				ctx = context.Background()
+			}
+
+			tc.setupMock(ctx, mp)
+
+			service := NewService(tc.fields.serviceName, tc.fields.instanceID, mp)
+
+			res := service.GetStatus(ctx)
+
+			tc.verifyResponse(t, res)
+			mp.AssertExpectations(t)
+			mp.AssertNumberOfCalls(t, "Ping", 1)
+		})
+	}
+}
