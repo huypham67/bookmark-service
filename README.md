@@ -28,6 +28,7 @@ Production-ready REST API service for bookmark and short-link management. Part o
 | Auth | JWT (RSA, validation) | v5.3.1 |
 | Logger | Zerolog | v1.35.1 |
 | Shared Library | bookmark-common | v0.1.0 |
+| API Docs | Swagger (swaggo/gin-swagger) | v1.6.1 |
 | Testing | Testify | v1.11.1 |
 
 ## 🚀 Quick Start
@@ -35,17 +36,18 @@ Production-ready REST API service for bookmark and short-link management. Part o
 ```bash
 cd bookmark-service
 go mod download
-make gen-keys          # JWT RSA keys (public key must match user-service's signer in prod)
+make gen-keys-local    # JWT RSA keys (public key must match user-service's signer in prod)
 createdb bookmark_db
+make migrate-up        # apply migrations
 make run               # build + run
 make test              # local tests + coverage (80% gate)
 ```
 
-API base: `http://localhost:8082/api/bookmark_service/v1`
+API base: `http://localhost:8080/api/bookmark_service/v1` · Swagger UI: `http://localhost:8080/swagger/index.html` (`make swagger` to regenerate docs)
 
 ### Environment (`.env`)
 ```env
-APP_PORT=8082
+APP_PORT=8080
 SERVICE_NAME=bookmark-service
 APP_HOST_NAME=/api/bookmark_service
 JWT_PUBLIC_KEY_PATH=keys/public.pem
@@ -124,7 +126,15 @@ bookmark-service/
 
 ## 🛠️ Make Targets
 
-`make test | test-coverage | docker-test | docker-sonar | build | run | swagger | gen-keys | fmt | vet | lint | tidy | clean`
+Run `make help` for the full list. Grouped:
+
+- **Dev**: `run` · `dev` (fmt→vet→test→swagger→run) · `fmt` · `vet` · `lint` · `tidy` · `vendor`
+- **Database**: `migrate-up` · `migrate-down` · `migrate-force` · `migrate-version`
+- **Testing**: `test` · `test-coverage`
+- **Build**: `build` · `build-linux` · `build-macos` · `build-windows` · `build-prod` · `release`
+- **Mocks**: `generate-mocks` · `clean-mocks`
+- **Docker / CI**: `docker-test` · `docker-sonar` · `docker-build-push` · `docker-run` · `docker-stop` · `docker-logs` · `docker-shell` · `docker-clean`
+- **Utilities**: `swagger` · `gen-keys-local` · `install-tools` · `info` · `clean` · `clean-all`
 
 The **Makefile is the single source of truth** for coverage/quality-gate exclusions (`INFRA_DIRS` / `SYSTEM_DIRS`); `sonar-project.properties` carries identity/scope only.
 

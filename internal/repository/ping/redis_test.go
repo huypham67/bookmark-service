@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPinger_Ping(t *testing.T) {
+func TestRedisPinger_Ping(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
@@ -34,7 +34,7 @@ func TestPinger_Ping(t *testing.T) {
 			t.Parallel()
 
 			ctx := context.Background()
-			pinger, mockRedis := newTestPinger(t)
+			pinger, mockRedis := newTestRedisPinger(t)
 
 			if tc.name == "should return error when Redis client is closed" {
 				mockRedis.Close()
