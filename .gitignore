@@ -1,32 +1,42 @@
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
-# Binaries for programs and plugins
+# Build outputs
+bin/
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
 
-# Test binary, built with `go test -c`
-*.test
+bookmark-service
 
-# Code coverage profiles and other test artifacts
-*.out
-coverage.*
-*.coverprofile
-profile.cov
+# IDE
+.idea/
+*.iwb
+*.iws
+.vscode/
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
-
-# Go workspace file
-go.work
-go.work.sum
-
-# env file
+# Environment
 .env
+.env.*
+!.env.example
 
-# Editor/IDE
-# .idea/
-# .vscode/
+# Dependencies
+vendor/
+
+# Test & Coverage
+*.log
+coverage.txt
+*.out
+*.test
+coverage/
+coverage.html
+coverage.tmp
+coverage_report/
+
+# Keys
+*.pem
+
+CLAUDE.md
+
+# OS
+.DS_Store
+Thumbs.db

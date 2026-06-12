@@ -1,0 +1,1 @@
+ALTER TABLE bookmarks ADD COLUMN code_int SERIAL UNIQUE;
