@@ -19,7 +19,10 @@ jobs:
         run: |
           set -e
 
-          echo "TAG=${IMAGE_TAG}" > .env
+          touch .env
+          grep -v '^BOOKMARK_SERVICE_TAG=' .env > .env.tmp || true
+          echo "BOOKMARK_SERVICE_TAG=${IMAGE_TAG}" >> .env.tmp
+          mv .env.tmp .env
           echo "::notice title=CD Status::🚀 Initiating deployment for image tag: [${IMAGE_TAG}]"
 
           echo "🔍 Validating docker-compose configuration syntax..."
