@@ -220,7 +220,7 @@ func TestHandler_Update(t *testing.T) {
 			tc.setupClaims(ctx)
 			tc.setupMock(ctx, mockSvc)
 
-			handler := NewHandler(mockSvc)
+			handler := NewHandler(mockSvc, nil)
 			handler.Update(ctx)
 
 			assert.Equal(t, tc.expected.statusCode, recorder.Code)

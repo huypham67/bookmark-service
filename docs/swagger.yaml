@@ -77,6 +77,11 @@ definitions:
       message:
         type: string
     type: object
+  response.MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
   response.Pagination:
     properties:
       limit:
@@ -283,6 +288,45 @@ paths:
       security:
       - Bearer: []
       summary: Update Bookmark
+      tags:
+      - bookmarks
+  /v1/bookmarks/import:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 'Upload a CSV file (columns: description,url) to be imported asynchronously'
+      parameters:
+      - description: CSV file with description,url columns
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Import accepted
+          schema:
+            $ref: '#/definitions/response.MessageResponse'
+        "400":
+          description: Invalid file or content
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/gin.H'
+        "413":
+          description: File too large
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - Bearer: []
+      summary: Import Bookmarks
       tags:
       - bookmarks
   /v1/links/redirect/{code}:

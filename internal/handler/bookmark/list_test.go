@@ -212,7 +212,7 @@ func TestHandler_List(t *testing.T) {
 			tc.setupClaims(ctx)
 			tc.setupMock(ctx, mockSvc)
 
-			handler := NewHandler(mockSvc)
+			handler := NewHandler(mockSvc, nil)
 			handler.List(ctx)
 
 			assert.Equal(t, tc.expected.statusCode, recorder.Code)
