@@ -164,7 +164,7 @@ func TestHandler_Delete(t *testing.T) {
 			tc.setupClaims(ctx)
 			tc.setupMock(ctx, mockSvc)
 
-			handler := NewHandler(mockSvc)
+			handler := NewHandler(mockSvc, nil)
 			handler.Delete(ctx)
 
 			assert.Equal(t, tc.expected.statusCode, recorder.Code)

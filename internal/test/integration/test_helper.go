@@ -25,6 +25,7 @@ import (
 	cacheRepo "github.com/huypham67/bookmark-service/internal/repository/cache"
 	linkRepo "github.com/huypham67/bookmark-service/internal/repository/link"
 	"github.com/huypham67/bookmark-service/internal/repository/ping"
+	queueRepo "github.com/huypham67/bookmark-service/internal/repository/queue"
 	bookmarkSvc "github.com/huypham67/bookmark-service/internal/service/bookmark"
 	bookmarkCacheSvc "github.com/huypham67/bookmark-service/internal/service/bookmark/cache"
 	healthSvc "github.com/huypham67/bookmark-service/internal/service/health"
@@ -150,12 +151,14 @@ func setupBookmarkTestApp(t *testing.T) *AuthenticatedTestApp {
 	mockRedis := pkgRedis.NewMock(t)
 
 	bookmarkRepository := bookmarkRepo.NewRepository(mockDB)
+	queuePublisher := queueRepo.NewRedisPublisher(mockRedis.Client)
 	bookmarkService := bookmarkSvc.NewService(bookmarkRepository)
+	bookmarkImporter := bookmarkSvc.NewImporter(queuePublisher)
 
 	cacheRepository := cacheRepo.NewRedis(mockRedis.Client)
 	cacheService := bookmarkCacheSvc.NewBookmarkService(bookmarkService, cacheRepository)
 
-	bookmarkHandlerInstance := bookmarkHandler.NewHandler(cacheService)
+	bookmarkHandlerInstance := bookmarkHandler.NewHandler(cacheService, bookmarkImporter)
 
 	tokenGenerator, tokenValidator := createTestJWT(t)
 

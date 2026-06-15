@@ -80,6 +80,12 @@ func RegisterBookmarkRoutes(
 		handler.Create,
 	)
 
+	routerGroup.POST(
+		"/bookmarks/import",
+		jwtMiddleware,
+		handler.Import,
+	)
+
 	routerGroup.GET(
 		"/bookmarks",
 		jwtMiddleware,

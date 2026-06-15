@@ -14,6 +14,9 @@ var (
 	ErrBookmarkNotFound      = errors.New("bookmark not found")
 	ErrBookmarkAlreadyExists = errors.New("bookmark code already exists")
 
+	ErrEmptyFile  = errors.New("csv file is empty")
+	ErrInvalidCSV = errors.New("invalid csv file")
+
 	ErrInternalServerError = errors.New("internal server error")
 )
 
@@ -24,7 +27,8 @@ type PaginationResult struct {
 	Total int64
 }
 
-// Service defines the interface for bookmark operations.
+// Service defines the interface for bookmark-related business logic, including CRUD operations.
+// It is separate from Importer because importing is a distinct use case with different performance characteristics and dependencies (e.g. queue publisher).
 //
 //go:generate mockery --name=Service --output=./mocks --outpkg=mocks --filename=mock_service.go
 type Service interface {
@@ -38,7 +42,7 @@ type service struct {
 	bookmarkRepo bookmark.Repository
 }
 
-// NewService creates a new instance of the bookmark service with the provided dependencies.
+// NewService creates a new bookmark CRUD service.
 func NewService(bookmarkRepo bookmark.Repository) Service {
 	return &service{
 		bookmarkRepo: bookmarkRepo,

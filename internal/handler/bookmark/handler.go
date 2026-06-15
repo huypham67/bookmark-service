@@ -11,15 +11,19 @@ type Handler interface {
 	List(c *gin.Context)
 	Update(c *gin.Context)
 	Delete(c *gin.Context)
+	Import(c *gin.Context)
 }
 
 type handler struct {
-	service bookmark.Service
+	service  bookmark.Service
+	importer bookmark.Importer
 }
 
-// NewHandler creates a new instance of the bookmark handler with the provided bookmark service.
-func NewHandler(service bookmark.Service) Handler {
+// NewHandler creates a new bookmark handler. The CRUD endpoints use the
+// (cache-decorated) service; Import uses the importer, which bypasses the cache.
+func NewHandler(service bookmark.Service, importer bookmark.Importer) Handler {
 	return &handler{
-		service: service,
+		service:  service,
+		importer: importer,
 	}
 }

@@ -19,6 +19,7 @@ import (
 	cacheRepo "github.com/huypham67/bookmark-service/internal/repository/cache"
 	linkRepo "github.com/huypham67/bookmark-service/internal/repository/link"
 	"github.com/huypham67/bookmark-service/internal/repository/ping"
+	queueRepo "github.com/huypham67/bookmark-service/internal/repository/queue"
 	bookmarkSvc "github.com/huypham67/bookmark-service/internal/service/bookmark"
 	bookmarkCacheSvc "github.com/huypham67/bookmark-service/internal/service/bookmark/cache"
 	healthSvc "github.com/huypham67/bookmark-service/internal/service/health"
@@ -29,10 +30,11 @@ import (
 // It serves as the single source of truth for all infrastructure and business logic components.
 type Container struct {
 	// Infrastructure
-	Config    *Config
-	DB        *gorm.DB
-	Redis     *redis.Client
-	CacheRepo cacheRepo.Repository
+	Config         *Config
+	DB             *gorm.DB
+	Redis          *redis.Client
+	CacheRepo      cacheRepo.Repository
+	QueuePublisher queueRepo.Publisher
 
 	// Handlers
 	HealthHandler   healthHandler.Handler
@@ -88,16 +90,18 @@ func NewContainer() (*Container, error) {
 
 	// Initialize shared infrastructure
 	cacheRepository := cacheRepo.NewRedis(rdb)
+	queuePublisher := queueRepo.NewRedisPublisher(rdb)
 
 	healthHandlerInstance := initHealthHandler(cfg, db, rdb)
 	linkHandlerInstance := initLinkHandler(rdb, db)
-	bookmarkHandlerInstance := initBookmarkHandler(db, cacheRepository)
+	bookmarkHandlerInstance := initBookmarkHandler(db, cacheRepository, queuePublisher)
 
 	return &Container{
 		Config:              cfg,
 		DB:                  db,
 		Redis:               rdb,
 		CacheRepo:           cacheRepository,
+		QueuePublisher:      queuePublisher,
 		HealthHandler:       healthHandlerInstance,
 		LinkHandler:         linkHandlerInstance,
 		BookmarkHandler:     bookmarkHandlerInstance,
@@ -125,13 +129,14 @@ func initLinkHandler(redisClient *redis.Client, db *gorm.DB) linkHandler.Handler
 	return linkHandler.NewHandler(service)
 }
 
-func initBookmarkHandler(db *gorm.DB, cacheRepository cacheRepo.Repository) bookmarkHandler.Handler {
+func initBookmarkHandler(db *gorm.DB, cacheRepository cacheRepo.Repository, queuePublisher queueRepo.Publisher) bookmarkHandler.Handler {
 	bookmarkRepository := bookmarkRepo.NewRepository(db)
 	bookmarkService := bookmarkSvc.NewService(bookmarkRepository)
+	bookmarkImporter := bookmarkSvc.NewImporter(queuePublisher)
 
 	cacheService := bookmarkCacheSvc.NewBookmarkService(bookmarkService, cacheRepository)
 
-	return bookmarkHandler.NewHandler(cacheService)
+	return bookmarkHandler.NewHandler(cacheService, bookmarkImporter)
 }
 
 // Close gracefully shuts down the database and Redis clients, ensuring that all resources are properly released.

@@ -159,10 +159,10 @@ help:
 	@echo "  make tidy            Dependencies"
 	@echo ""
 	@echo "Database:"
-	@echo "  make migrate-up      Apply all pending migrations"
-	@echo "  make migrate-down    Rollback last migration"
-	@echo "  make migrate-version Show current migration version"
-	@echo "  make migrate-force   Force migration to specific version"
+	@echo "  make migrate-up [STEPS=n]    Apply all pending migrations (or n)"
+	@echo "  make migrate-down [STEPS=n]  Roll back last migration (or n)"
+	@echo "  make migrate-version         Show current version + dirty state"
+	@echo "  make migrate-force           Recover dirty DB (force version, clears dirty)"
 	@echo ""
 	@echo "Testing:"
 	@echo "  make test            Local tests + coverage report"
@@ -347,29 +347,50 @@ docker-clean:
 
 # =============================================================================
 # DATABASE MIGRATIONS
+#
+# Thin wrapper over ./cmd/migrate (golang-migrate under the hood). The DB
+# connection is read from the service env/config, same as `make run`.
+#
+#   migrate-up [STEPS=n]   Apply all pending migrations (or only n with STEPS=)
+#   migrate-down [STEPS=n] Roll back the last migration (or n with STEPS=)
+#   migrate-version        Print the current version + dirty state
+#   migrate-force          Recover a DIRTY database. golang-migrate marks the DB
+#                          dirty when a migration dies partway, and refuses to
+#                          run anything until it is cleared. force sets the
+#                          version WITHOUT running SQL and clears the flag — use
+#                          it only after manually reconciling the schema.
 # =============================================================================
 
 .PHONY: migrate-up migrate-down migrate-force migrate-version
 
 MIGRATE_CMD := $(GO) run ./cmd/migrate
+STEPS ?=
 
 migrate-up:
+ifeq ($(strip $(STEPS)),)
 	@echo "Applying all pending migrations..."
-	$(MIGRATE_CMD)
+	@$(MIGRATE_CMD)
+else
+	@echo "Applying $(STEPS) migration(s) up..."
+	@$(MIGRATE_CMD) -direction up -steps $(STEPS)
+endif
 
 migrate-down:
-	@echo "Rolling back last migration..."
-	$(MIGRATE_CMD) -direction down -steps 1
-
-migrate-force:
-	@read -p "Enter number of steps to rollback (default 1): " steps; \
-	steps=$${steps:-1}; \
-	echo "Rolling back $$steps migration(s)..."; \
-	$(MIGRATE_CMD) -direction down -steps $$steps
+	@echo "Rolling back $(or $(STEPS),1) migration(s)..."
+	@$(MIGRATE_CMD) -direction down -steps $(or $(STEPS),1)
 
 migrate-version:
 	@echo "Current migration status:"
-	$(MIGRATE_CMD) -direction up -steps 0
+	@$(MIGRATE_CMD) -version
+
+migrate-force:
+	@echo "⚠  force sets the schema_migrations version WITHOUT running any SQL."
+	@echo "   Use it only to clear a 'dirty' state after you have manually"
+	@echo "   reconciled the database schema. Run 'make migrate-version' first."
+	@read -p "Force schema to which version? " version; \
+	if [ -z "$$version" ]; then echo "Aborted: no version given"; exit 1; fi; \
+	echo "Forcing migration version to $$version..."; \
+	$(MIGRATE_CMD) -force $$version
 
 # =============================================================================
 # UTILITIES
