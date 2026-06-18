@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/huypham67/bookmark-common/pkg/dbutils"
+	"github.com/huypham67/bookmark-common/pkg/shortcode"
 	"github.com/huypham67/bookmark-service/internal/model"
 	"github.com/huypham67/bookmark-service/internal/test/fixtures"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +32,6 @@ func TestRepository_Create(t *testing.T) {
 					BaseModel:   model.BaseModel{ID: "new-bookmark-1"},
 					Description: "New Test Bookmark",
 					URL:         "https://example.com/new",
-					Code:        "codenew001",
 					UserID:      fixtures.TestUserID1,
 				},
 			},
@@ -42,7 +42,9 @@ func TestRepository_Create(t *testing.T) {
 				result := db.First(&actual, "id = ?", a.bookmark.ID)
 				require.NoError(t, result.Error)
 
+				assert.NotEmpty(t, actual.Code)
 				assert.Equal(t, a.bookmark.Code, actual.Code)
+				assert.Equal(t, shortcode.StoreSQL, shortcode.Classify(actual.Code))
 				assert.Equal(t, a.bookmark.URL, actual.URL)
 				assert.Equal(t, a.bookmark.UserID, actual.UserID)
 				assert.Equal(t, a.bookmark.Description, actual.Description)
@@ -55,7 +57,6 @@ func TestRepository_Create(t *testing.T) {
 					BaseModel:   model.BaseModel{ID: "new-bookmark-2"},
 					Description: "Another New Bookmark",
 					URL:         "https://example.com/another",
-					Code:        "codenew002",
 					UserID:      fixtures.TestUserID1,
 				},
 			},
@@ -66,28 +67,24 @@ func TestRepository_Create(t *testing.T) {
 				result := db.First(&actual, "id = ?", a.bookmark.ID)
 				require.NoError(t, result.Error)
 
+				assert.NotEmpty(t, actual.Code)
 				assert.Equal(t, a.bookmark.Code, actual.Code)
 				assert.Equal(t, a.bookmark.UserID, actual.UserID)
 			},
 		},
 		{
-			name: "should return error when code is duplicate",
+			name: "should return error when ID is duplicate",
 			args: args{
 				bookmark: &model.Bookmark{
-					BaseModel:   model.BaseModel{ID: "new-bookmark-3"},
-					Description: "Duplicate Code Bookmark",
+					BaseModel:   model.BaseModel{ID: "bookmark-1-1"}, // already exists in seed
+					Description: "Duplicate ID Bookmark",
 					URL:         "https://example.com/duplicate",
-					Code:        "code1001", // Already exists from seed data
 					UserID:      fixtures.TestUserID2,
 				},
 			},
 			verify: func(t *testing.T, db *gorm.DB, err error, a args) {
 				require.Error(t, err)
 				assert.ErrorIs(t, err, dbutils.ErrDuplicationType)
-
-				var actual model.Bookmark
-				result := db.First(&actual, "id = ?", a.bookmark.ID)
-				assert.ErrorIs(t, result.Error, gorm.ErrRecordNotFound)
 			},
 		},
 		{
@@ -96,9 +93,8 @@ func TestRepository_Create(t *testing.T) {
 				bookmark: &model.Bookmark{
 					BaseModel:   model.BaseModel{ID: "minimal-bookmark"},
 					URL:         "https://example.com/minimal",
-					Code:        "codeminimal",
 					UserID:      fixtures.TestUserID2,
-					Description: "", // Empty description is OK
+					Description: "",
 				},
 			},
 			verify: func(t *testing.T, db *gorm.DB, err error, a args) {
@@ -108,7 +104,7 @@ func TestRepository_Create(t *testing.T) {
 				result := db.First(&actual, "id = ?", a.bookmark.ID)
 				require.NoError(t, result.Error)
 
-				assert.Equal(t, a.bookmark.Code, actual.Code)
+				assert.NotEmpty(t, actual.Code)
 				assert.Equal(t, a.bookmark.URL, actual.URL)
 			},
 		},
@@ -119,7 +115,6 @@ func TestRepository_Create(t *testing.T) {
 					BaseModel:   model.BaseModel{ID: "cancel-bookmark"},
 					Description: "Cancelled Context Bookmark",
 					URL:         "https://example.com/cancel",
-					Code:        "codecancel",
 					UserID:      fixtures.TestUserID1,
 				},
 			},
@@ -185,7 +180,7 @@ func TestRepository_Update(t *testing.T) {
 
 				assert.Equal(t, "Updated Description", actual.Description)
 				assert.Equal(t, "https://example.com/updated", actual.URL)
-				assert.Equal(t, "code1001", actual.Code) // unchanged
+				assert.Equal(t, "code1001", actual.Code)
 			},
 		},
 		{
@@ -242,21 +237,6 @@ func TestRepository_Update(t *testing.T) {
 				result := db.First(&actual, "id = ?", "bookmark-1-1")
 				require.NoError(t, result.Error)
 				assert.Equal(t, "Test Bookmark 1-1", actual.Description) // unchanged
-			},
-		},
-		{
-			name: "should return error when updating to duplicate code",
-			args: args{
-				id:     "bookmark-1-1",
-				userID: fixtures.TestUserID1,
-				updates: &model.Bookmark{
-					Code: "code1002", // already exists
-				},
-			},
-			verify: func(t *testing.T, db *gorm.DB, rowsAffected int64, err error) {
-				require.Error(t, err)
-				assert.ErrorIs(t, err, dbutils.ErrDuplicationType)
-				assert.Equal(t, int64(0), rowsAffected)
 			},
 		},
 		{

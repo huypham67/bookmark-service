@@ -12,7 +12,6 @@ import (
 //go:generate mockery --name=Repository --output=./mocks --outpkg=mocks --filename=mock_repo.go
 type Repository interface {
 	Create(ctx context.Context, bookmark *model.Bookmark) error
-	NextCodeInt(ctx context.Context) (int64, error)
 	GetURLByCode(ctx context.Context, code string) (string, error)
 	GetPaginatedByUserID(ctx context.Context, userID string, offset, limit int64, sort string) ([]*model.Bookmark, error)
 	CountByUserID(ctx context.Context, userID string) (int64, error)
