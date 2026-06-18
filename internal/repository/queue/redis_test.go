@@ -14,7 +14,8 @@ func TestPublisher_Enqueue(t *testing.T) {
 
 	const queueName = "bookmark:import:jobs"
 
-	// Payloads are opaque bytes at this layer: the publisher only RPUSHes them.
+	// Payloads are opaque bytes at this layer: the publisher LPUSHes them onto the
+	// head so that the worker's RPOP reads them in FIFO order.
 	testCases := []struct {
 		name     string
 		payloads [][]byte
@@ -22,7 +23,7 @@ func TestPublisher_Enqueue(t *testing.T) {
 		verify   func(*testing.T, *pkgRedis.Mock, error)
 	}{
 		{
-			name:     "pushes a single payload to the tail",
+			name:     "pushes a single payload to the head",
 			payloads: [][]byte{[]byte("a")},
 			verify: func(t *testing.T, mockRedis *pkgRedis.Mock, err error) {
 				require.NoError(t, err)
@@ -32,13 +33,15 @@ func TestPublisher_Enqueue(t *testing.T) {
 			},
 		},
 		{
-			name:     "pushes multiple payloads in order in one call",
+			// LPUSH reverses element order in the list: last arg ends up at the head,
+			// first arg at the tail — so RPOP (worker) reads them back in FIFO order.
+			name:     "multiple payloads are consumable in FIFO order via RPOP",
 			payloads: [][]byte{[]byte("a"), []byte("b"), []byte("c")},
 			verify: func(t *testing.T, mockRedis *pkgRedis.Mock, err error) {
 				require.NoError(t, err)
 				got, lerr := mockRedis.Server.List(queueName)
 				require.NoError(t, lerr)
-				assert.Equal(t, []string{"a", "b", "c"}, got)
+				assert.Equal(t, []string{"c", "b", "a"}, got)
 			},
 		},
 		{
