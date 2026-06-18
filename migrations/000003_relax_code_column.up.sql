@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS idx_bookmarks_code;
+ALTER TABLE bookmarks ALTER COLUMN code DROP NOT NULL;

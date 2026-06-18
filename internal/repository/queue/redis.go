@@ -28,5 +28,5 @@ func (p *redisPublisher) Enqueue(ctx context.Context, queue string, payloads ...
 		values[i] = payload
 	}
 
-	return p.client.RPush(ctx, queue, values...).Err()
+	return p.client.LPush(ctx, queue, values...).Err()
 }
