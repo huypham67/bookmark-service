@@ -2,6 +2,8 @@ package bookmark
 
 import (
 	"bytes"
+	"context"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -51,7 +53,7 @@ func TestHandler_Import(t *testing.T) {
 		name         string
 		buildRequest func(*testing.T) *http.Request
 		setupClaims  func(*gin.Context)
-		setupMock    func(*mocks.Importer)
+		setupMock    func(context.Context, *mocks.Importer)
 		expected     expected
 	}{
 		{
@@ -60,8 +62,8 @@ func TestHandler_Import(t *testing.T) {
 				return multipartFileRequest(t, "file", "bookmarks.csv", string(fixtures.ReadCSV(t, fixtures.CSVBookmarksValid)))
 			},
 			setupClaims: setUser,
-			setupMock: func(mockSvc *mocks.Importer) {
-				mockSvc.On("Import", mock.Anything, "user-id-123", mock.Anything).
+			setupMock: func(ctx context.Context, mockSvc *mocks.Importer) {
+				mockSvc.On("Import", ctx, "user-id-123", mock.MatchedBy(func(r io.Reader) bool { return r != nil })).
 					Return(nil).Once()
 			},
 			expected: expected{
@@ -75,7 +77,7 @@ func TestHandler_Import(t *testing.T) {
 				return multipartFileRequest(t, "file", "bookmarks.csv", string(fixtures.ReadCSV(t, fixtures.CSVBookmarksValid)))
 			},
 			setupClaims: func(*gin.Context) {},
-			setupMock:   func(*mocks.Importer) {},
+			setupMock:   func(ctx context.Context, mockSvc *mocks.Importer) {},
 			expected: expected{
 				statusCode:   http.StatusUnauthorized,
 				bodyContains: "Unauthorized",
@@ -93,7 +95,7 @@ func TestHandler_Import(t *testing.T) {
 				return req
 			},
 			setupClaims: setUser,
-			setupMock:   func(*mocks.Importer) {},
+			setupMock:   func(ctx context.Context, mockSvc *mocks.Importer) {},
 			expected: expected{
 				statusCode:   http.StatusBadRequest,
 				bodyContains: "file is required",
@@ -105,7 +107,7 @@ func TestHandler_Import(t *testing.T) {
 				return multipartFileRequest(t, "file", "bookmarks.txt", string(fixtures.ReadCSV(t, fixtures.CSVBookmarksValid)))
 			},
 			setupClaims: setUser,
-			setupMock:   func(*mocks.Importer) {},
+			setupMock:   func(ctx context.Context, mockSvc *mocks.Importer) {},
 			expected: expected{
 				statusCode:   http.StatusBadRequest,
 				bodyContains: "only .csv files are allowed",
@@ -119,7 +121,7 @@ func TestHandler_Import(t *testing.T) {
 				return multipartFileRequest(t, "file", "big.csv", big)
 			},
 			setupClaims: setUser,
-			setupMock:   func(*mocks.Importer) {},
+			setupMock:   func(ctx context.Context, mockSvc *mocks.Importer) {},
 			expected: expected{
 				statusCode:   http.StatusRequestEntityTooLarge,
 				bodyContains: "File too large",
@@ -131,8 +133,8 @@ func TestHandler_Import(t *testing.T) {
 				return multipartFileRequest(t, "file", "bookmarks.csv", string(fixtures.ReadCSV(t, fixtures.CSVBookmarksEmpty)))
 			},
 			setupClaims: setUser,
-			setupMock: func(mockSvc *mocks.Importer) {
-				mockSvc.On("Import", mock.Anything, "user-id-123", mock.Anything).
+			setupMock: func(ctx context.Context, mockSvc *mocks.Importer) {
+				mockSvc.On("Import", ctx, "user-id-123", mock.MatchedBy(func(r io.Reader) bool { return r != nil })).
 					Return(bookmark.ErrEmptyFile).Once()
 			},
 			expected: expected{
@@ -146,8 +148,8 @@ func TestHandler_Import(t *testing.T) {
 				return multipartFileRequest(t, "file", "bookmarks.csv", string(fixtures.ReadCSV(t, fixtures.CSVBookmarksValid)))
 			},
 			setupClaims: setUser,
-			setupMock: func(mockSvc *mocks.Importer) {
-				mockSvc.On("Import", mock.Anything, "user-id-123", mock.Anything).
+			setupMock: func(ctx context.Context, mockSvc *mocks.Importer) {
+				mockSvc.On("Import", ctx, "user-id-123", mock.MatchedBy(func(r io.Reader) bool { return r != nil })).
 					Return(bookmark.ErrInvalidCSV).Once()
 			},
 			expected: expected{
@@ -161,8 +163,8 @@ func TestHandler_Import(t *testing.T) {
 				return multipartFileRequest(t, "file", "bookmarks.csv", string(fixtures.ReadCSV(t, fixtures.CSVBookmarksValid)))
 			},
 			setupClaims: setUser,
-			setupMock: func(mockSvc *mocks.Importer) {
-				mockSvc.On("Import", mock.Anything, "user-id-123", mock.Anything).
+			setupMock: func(ctx context.Context, mockSvc *mocks.Importer) {
+				mockSvc.On("Import", ctx, "user-id-123", mock.MatchedBy(func(r io.Reader) bool { return r != nil })).
 					Return(bookmark.ErrInternalServerError).Once()
 			},
 			expected: expected{
@@ -184,7 +186,7 @@ func TestHandler_Import(t *testing.T) {
 			ctx.Request = tc.buildRequest(t)
 
 			tc.setupClaims(ctx)
-			tc.setupMock(mockSvc)
+			tc.setupMock(ctx, mockSvc)
 
 			handler := NewHandler(nil, mockSvc)
 			handler.Import(ctx)
