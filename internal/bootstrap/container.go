@@ -6,6 +6,9 @@ import (
 	ratelimitprovider "github.com/huypham67/bookmark-common/pkg/ratelimit/provider"
 	pkgRedis "github.com/huypham67/bookmark-common/pkg/redis"
 	"github.com/huypham67/bookmark-common/pkg/sqldb"
+	"github.com/huypham67/bookmark-common/pkg/tracing"
+	"github.com/newrelic/go-agent/v3/integrations/nrredis-v9"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
@@ -27,27 +30,23 @@ import (
 )
 
 // Container holds the application's dependencies and initialized services.
-// It serves as the single source of truth for all infrastructure and business logic components.
 type Container struct {
-	// Infrastructure
 	Config         *Config
 	DB             *gorm.DB
 	Redis          *redis.Client
+	NRApp          *newrelic.Application
 	CacheRepo      cacheRepo.Repository
 	QueuePublisher queueRepo.Publisher
 
-	// Handlers
 	HealthHandler   healthHandler.Handler
 	LinkHandler     linkHandler.Handler
 	BookmarkHandler bookmarkHandler.Handler
 
-	// Middleware
 	JWTMiddleware       gin.HandlerFunc
 	RateLimitMiddleware gin.HandlerFunc
 }
 
-// NewContainer initializes the application container by loading configuration,
-// setting up infrastructure clients, and initializing all handlers with their dependencies.
+// NewContainer initializes the application container.
 func NewContainer() (*Container, error) {
 	cfg, err := NewConfig()
 	if err != nil {
@@ -55,7 +54,13 @@ func NewContainer() (*Container, error) {
 		return nil, err
 	}
 
-	db, err := sqldb.NewClient("")
+	nrApp, err := tracing.NewApplication("")
+	if err != nil {
+		log.Error().Err(err).Msg("failed to initialize New Relic")
+		return nil, err
+	}
+
+	db, err := sqldb.NewInstrumentedClient("")
 	if err != nil {
 		log.Error().Err(err).Msg("failed to initialize postgres client")
 		return nil, err
@@ -72,6 +77,7 @@ func NewContainer() (*Container, error) {
 		log.Error().Err(err).Msg("failed to initialize redis client")
 		return nil, err
 	}
+	rdb.AddHook(nrredis.NewHook(rdb.Options()))
 
 	tokenValidator, err := jwtprovider.NewValidator("")
 	if err != nil {
@@ -79,78 +85,62 @@ func NewContainer() (*Container, error) {
 		return nil, err
 	}
 
-	jwtMiddleware := middleware.JWTAuth(tokenValidator)
-
 	rateLimiter, err := ratelimitprovider.New(rdb, "")
 	if err != nil {
 		log.Error().Err(err).Msg("failed to initialize rate limiter")
 		return nil, err
 	}
-	rateLimitMiddleware := middleware.RateLimit(rateLimiter)
 
-	// Initialize shared infrastructure
 	cacheRepository := cacheRepo.NewRedis(rdb)
 	queuePublisher := queueRepo.NewRedisPublisher(rdb)
-
-	healthHandlerInstance := initHealthHandler(cfg, db, rdb)
-	linkHandlerInstance := initLinkHandler(rdb, db)
-	bookmarkHandlerInstance := initBookmarkHandler(db, cacheRepository, queuePublisher)
 
 	return &Container{
 		Config:              cfg,
 		DB:                  db,
 		Redis:               rdb,
+		NRApp:               nrApp,
 		CacheRepo:           cacheRepository,
 		QueuePublisher:      queuePublisher,
-		HealthHandler:       healthHandlerInstance,
-		LinkHandler:         linkHandlerInstance,
-		BookmarkHandler:     bookmarkHandlerInstance,
-		JWTMiddleware:       jwtMiddleware,
-		RateLimitMiddleware: rateLimitMiddleware,
+		HealthHandler:       initHealthHandler(cfg, db, rdb),
+		LinkHandler:         initLinkHandler(rdb, db),
+		BookmarkHandler:     initBookmarkHandler(db, cacheRepository, queuePublisher),
+		JWTMiddleware:       middleware.JWTAuth(tokenValidator),
+		RateLimitMiddleware: middleware.RateLimit(rateLimiter),
 	}, nil
 }
 
 func initHealthHandler(cfg *Config, db *gorm.DB, redisClient *redis.Client) healthHandler.Handler {
-	// bookmark-service depends on both PostgreSQL (bookmarks) and Redis (links + cache),
-	// so the health check pings both.
-	pinger := ping.NewMulti(
-		ping.NewSQLDB(db),
-		ping.NewRedis(redisClient),
-	)
-	healthService := healthSvc.NewService(cfg.ServiceName, cfg.InstanceID, pinger)
-	return healthHandler.NewHandler(healthService)
+	pinger := ping.NewMulti(ping.NewSQLDB(db), ping.NewRedis(redisClient))
+	return healthHandler.NewHandler(healthSvc.NewService(cfg.ServiceName, cfg.InstanceID, pinger))
 }
 
 func initLinkHandler(redisClient *redis.Client, db *gorm.DB) linkHandler.Handler {
-	linkRepository := linkRepo.NewRepository(redisClient)
-	codeGenerator := utils.NewCodeGenerator()
-	bookmarkResolver := bookmarkRepo.NewRepository(db)
-	service := linkSvc.NewService(linkRepository, codeGenerator, bookmarkResolver)
+	service := linkSvc.NewService(
+		linkRepo.NewRepository(redisClient),
+		utils.NewCodeGenerator(),
+		bookmarkRepo.NewRepository(db),
+	)
 	return linkHandler.NewHandler(service)
 }
 
 func initBookmarkHandler(db *gorm.DB, cacheRepository cacheRepo.Repository, queuePublisher queueRepo.Publisher) bookmarkHandler.Handler {
 	bookmarkRepository := bookmarkRepo.NewRepository(db)
-	bookmarkService := bookmarkSvc.NewService(bookmarkRepository)
-	bookmarkImporter := bookmarkSvc.NewImporter(queuePublisher)
-
-	cacheService := bookmarkCacheSvc.NewBookmarkService(bookmarkService, cacheRepository)
-
-	return bookmarkHandler.NewHandler(cacheService, bookmarkImporter)
+	cacheService := bookmarkCacheSvc.NewBookmarkService(bookmarkSvc.NewService(bookmarkRepository), cacheRepository)
+	return bookmarkHandler.NewHandler(cacheService, bookmarkSvc.NewImporter(queuePublisher))
 }
 
-// Close gracefully shuts down the database and Redis clients, ensuring that all resources are properly released.
+// Close gracefully shuts down all resources.
 func (c *Container) Close() error {
 	if c.Redis != nil {
 		_ = c.Redis.Close()
 	}
-
 	if c.DB != nil {
-		sqlDB, err := c.DB.DB()
-		if err == nil {
+		if sqlDB, err := c.DB.DB(); err == nil {
 			_ = sqlDB.Close()
 		}
 	}
-
+	if c.NRApp != nil {
+		c.NRApp.Shutdown(0)
+	}
 	return nil
 }

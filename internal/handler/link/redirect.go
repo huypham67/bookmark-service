@@ -8,9 +8,28 @@ import (
 	"github.com/huypham67/bookmark-common/pkg/dbutils"
 	"github.com/huypham67/bookmark-common/pkg/requestutils"
 	"github.com/huypham67/bookmark-common/pkg/response"
+	"github.com/huypham67/bookmark-common/pkg/shortcode"
 	linkDTO "github.com/huypham67/bookmark-service/internal/dto/link"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/rs/zerolog/log"
 )
+
+const (
+	metricLinkRedirect = "Custom/Link/Redirect"
+	metricLinkNotFound = "Custom/Link/RedirectNotFound"
+)
+
+// linkSource maps a code's routing store to a stable label for the redirect metric.
+func linkSource(code string) string {
+	switch shortcode.Classify(code) {
+	case shortcode.StoreRedis:
+		return "redis"
+	case shortcode.StoreSQL:
+		return "pg"
+	default:
+		return "unknown"
+	}
+}
 
 // RedirectToURL handles the redirect endpoint.
 //
@@ -25,6 +44,9 @@ import (
 // @Failure 500 {object} gin.H "Internal server error"
 // @Router /v1/links/redirect/{code} [get]
 func (h *handler) RedirectToURL(c *gin.Context) {
+	txn := newrelic.FromContext(c)
+	defer txn.StartSegment("handler.link.RedirectToURL").End()
+
 	req, err := requestutils.Bind[linkDTO.RedirectRequest](c)
 
 	if err != nil {
@@ -38,6 +60,7 @@ func (h *handler) RedirectToURL(c *gin.Context) {
 
 	if err != nil {
 		if errors.Is(err, dbutils.ErrRecordNotFoundType) {
+			txn.Application().RecordCustomMetric(metricLinkNotFound, 1)
 			response.NotFound(c, "Short link not found")
 			return
 		}
@@ -50,6 +73,9 @@ func (h *handler) RedirectToURL(c *gin.Context) {
 		response.InternalServerError(c)
 		return
 	}
+
+	txn.Application().RecordCustomMetric(metricLinkRedirect, 1)
+	txn.AddAttribute("link.source", linkSource(code))
 
 	c.Redirect(http.StatusFound, url)
 }
