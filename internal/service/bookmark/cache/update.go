@@ -5,11 +5,15 @@ import (
 
 	bookmarkDTO "github.com/huypham67/bookmark-service/internal/dto/bookmark"
 	"github.com/huypham67/bookmark-service/internal/service/bookmark"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/rs/zerolog/log"
 )
 
 // Update updates an existing bookmark and invalidates the relevant cache entries.
 func (s *bookmarkCacheService) Update(ctx context.Context, userID, bookmarkID string, req bookmarkDTO.UpdateBookmarkRequest) error {
+	segment := newrelic.FromContext(ctx).StartSegment("service.bookmark.cache.Update")
+	defer segment.End()
+
 	// Invalidate all list caches for this user before writing.
 	hashKey := buildUserCacheKey(userID)
 	if err := s.cacheRepo.DeleteCacheByHashKey(ctx, hashKey); err != nil {

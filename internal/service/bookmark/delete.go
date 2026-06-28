@@ -5,11 +5,15 @@ import (
 	"errors"
 
 	"github.com/huypham67/bookmark-common/pkg/dbutils"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/rs/zerolog/log"
 )
 
 // Delete deletes an existing bookmark for the user.
 func (s *service) Delete(ctx context.Context, userID, bookmarkID string) error {
+	segment := newrelic.FromContext(ctx).StartSegment("service.bookmark.Delete")
+	defer segment.End()
+
 	rowsAffected, err := s.bookmarkRepo.Delete(ctx, bookmarkID, userID)
 	if err != nil {
 		switch {

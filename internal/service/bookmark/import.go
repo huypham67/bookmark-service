@@ -9,14 +9,19 @@ import (
 	"github.com/google/uuid"
 	"github.com/huypham67/bookmark-common/pkg/csvutil"
 	"github.com/huypham67/bookmark-common/pkg/sliceutil"
+	"github.com/huypham67/bookmark-common/pkg/tracing"
 	bookmarkDTO "github.com/huypham67/bookmark-service/internal/dto/bookmark"
 	"github.com/huypham67/bookmark-service/internal/repository/queue"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/rs/zerolog/log"
 )
 
 const (
 	importBatchSize = 100
 	importQueueName = "bookmark:import:jobs"
+
+	metricImportQueued  = "Custom/Bookmark/ImportQueued"
+	metricImportRecords = "Custom/Bookmark/ImportRecords"
 )
 
 // Importer defines the interface for importing bookmarks from a CSV file.
@@ -48,7 +53,14 @@ func NewImporter(publisher queue.Publisher) Importer {
 // once the work is safely on the queue. All batches share a single job ID so
 // the worker can correlate (and de-duplicate) them.
 func (i *importer) Import(ctx context.Context, userID string, r io.Reader) error {
-	records, err := csvutil.Decode[bookmarkDTO.BookmarkCSVRecord](r)
+	txn := newrelic.FromContext(ctx)
+	defer txn.StartSegment("service.bookmark.Import").End()
+
+	var (
+		records []bookmarkDTO.BookmarkCSVRecord
+		err     error
+	)
+	records, err = csvutil.Decode[bookmarkDTO.BookmarkCSVRecord](r)
 	if err != nil {
 		switch {
 		case errors.Is(err, csvutil.ErrEmptyCSV):
@@ -70,13 +82,15 @@ func (i *importer) Import(ctx context.Context, userID string, r io.Reader) error
 
 	batches := sliceutil.SplitIntoBatches(records, importBatchSize)
 	jobID := uuid.New().String()
+	traceMetadata := tracing.Extract(ctx)
 
 	payloads := make([][]byte, 0, len(batches))
 	for _, batch := range batches {
 		job := bookmarkDTO.BookmarkImportMessage{
-			JobID:   jobID,
-			UserID:  userID,
-			Records: batch,
+			JobID:         jobID,
+			UserID:        userID,
+			Records:       batch,
+			TraceMetadata: traceMetadata,
 		}
 
 		payload, err := json.Marshal(job)
@@ -100,6 +114,10 @@ func (i *importer) Import(ctx context.Context, userID string, r io.Reader) error
 			Msg("failed to enqueue bookmark import jobs")
 		return ErrInternalServerError
 	}
+
+	app := txn.Application()
+	app.RecordCustomMetric(metricImportQueued, 1)
+	app.RecordCustomMetric(metricImportRecords, float64(len(records)))
 
 	log.Info().
 		Str("job_id", jobID).

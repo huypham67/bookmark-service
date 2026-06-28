@@ -7,11 +7,15 @@ import (
 	"github.com/huypham67/bookmark-common/pkg/dbutils"
 	bookmarkDTO "github.com/huypham67/bookmark-service/internal/dto/bookmark"
 	"github.com/huypham67/bookmark-service/internal/model"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/rs/zerolog/log"
 )
 
 // Update updates an existing bookmark for the user.
 func (s *service) Update(ctx context.Context, userID, bookmarkID string, req bookmarkDTO.UpdateBookmarkRequest) error {
+	segment := newrelic.FromContext(ctx).StartSegment("service.bookmark.Update")
+	defer segment.End()
+
 	updates := &model.Bookmark{}
 	if req.Description != "" {
 		updates.Description = req.Description
