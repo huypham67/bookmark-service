@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"github.com/newrelic/go-agent/v3/integrations/nrgin"
+
 	"github.com/huypham67/bookmark-service/internal/api"
 )
 
@@ -8,6 +10,12 @@ import (
 func SetupRoutes(router *api.Router, container *Container) {
 	apiGroup := router.GroupAPI()
 	apiV1Group := router.GroupV1()
+
+	// NR traces all v1 business routes. Health check stays on apiGroup (no NR)
+	// to avoid load-balancer probe noise flooding the APM transaction list.
+	if container.NRApp != nil {
+		apiV1Group.Use(nrgin.Middleware(container.NRApp))
+	}
 
 	// Rate limit every public endpoint. GroupV1 is a separate group object from
 	// GroupAPI, so the middleware must be applied to both to cover all routes.

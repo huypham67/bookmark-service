@@ -10,6 +10,7 @@ import (
 	"github.com/huypham67/bookmark-common/pkg/response"
 	bookmarkDTO "github.com/huypham67/bookmark-service/internal/dto/bookmark"
 	"github.com/huypham67/bookmark-service/internal/service/bookmark"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/rs/zerolog/log"
 )
 
@@ -30,6 +31,9 @@ import (
 // @Failure 500 {object} gin.H "Internal server error"
 // @Router /v1/bookmarks/{id} [put]
 func (h *handler) Update(c *gin.Context) {
+	segment := newrelic.FromContext(c).StartSegment("handler.bookmark.Update")
+	defer segment.End()
+
 	userID, err := jwt.GetUserIDFromContext(c)
 
 	if err != nil {

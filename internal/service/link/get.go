@@ -5,6 +5,7 @@ import (
 
 	"github.com/huypham67/bookmark-common/pkg/dbutils"
 	"github.com/huypham67/bookmark-common/pkg/shortcode"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/rs/zerolog/log"
 )
 
@@ -14,6 +15,9 @@ import (
 // links, SQL for bookmarks. A code with no recognized prefix is treated as not
 // found.
 func (s *service) GetOriginalURL(ctx context.Context, code string) (string, error) {
+	segment := newrelic.FromContext(ctx).StartSegment("service.link.GetOriginalURL")
+	defer segment.End()
+
 	switch shortcode.Classify(code) {
 	case shortcode.StoreRedis:
 		return s.getShortLinkURL(ctx, code)

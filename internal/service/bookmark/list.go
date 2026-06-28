@@ -5,11 +5,14 @@ import (
 
 	bookmarkDTO "github.com/huypham67/bookmark-service/internal/dto/bookmark"
 	"github.com/huypham67/bookmark-service/internal/model"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/rs/zerolog/log"
 )
 
 // List retrieves a paginated list of bookmarks for the user.
 func (s *service) List(ctx context.Context, userID string, req *bookmarkDTO.ListBookmarksRequest) ([]*model.Bookmark, *PaginationResult, error) {
+	segment := newrelic.FromContext(ctx).StartSegment("service.bookmark.List")
+	defer segment.End()
 
 	offset := (req.Page - 1) * req.Limit
 

@@ -7,6 +7,7 @@ import (
 	"github.com/huypham67/bookmark-common/pkg/requestutils"
 	"github.com/huypham67/bookmark-common/pkg/response"
 	linkDTO "github.com/huypham67/bookmark-service/internal/dto/link"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/rs/zerolog/log"
 )
 
@@ -23,6 +24,9 @@ import (
 // @Failure 500 {object} gin.H "Internal server error"
 // @Router /v1/links/shorten [post]
 func (h *handler) ShortenURL(c *gin.Context) {
+	segment := newrelic.FromContext(c).StartSegment("handler.link.ShortenURL")
+	defer segment.End()
+
 	req, err := requestutils.Bind[linkDTO.ShortenURLRequest](c)
 
 	if err != nil {

@@ -5,14 +5,20 @@ import (
 
 	"github.com/huypham67/bookmark-common/pkg/shortcode"
 	linkDTO "github.com/huypham67/bookmark-service/internal/dto/link"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/rs/zerolog/log"
 )
+
+const metricLinkShortened = "Custom/Link/Shortened"
 
 // ShortenURL generates a unique short code for the provided URL and saves the mapping to Redis.
 //
 // The code carries a Redis routing prefix so the redirect endpoint can tell it
 // apart from SQL bookmark codes.
 func (s *service) ShortenURL(ctx context.Context, request linkDTO.ShortenURLRequest) (string, error) {
+	txn := newrelic.FromContext(ctx)
+	defer txn.StartSegment("service.link.ShortenURL").End()
+
 	payload, err := s.codeGenerator.Generate(shortCodeLength)
 
 	if err != nil {
@@ -53,5 +59,7 @@ func (s *service) ShortenURL(ctx context.Context, request linkDTO.ShortenURLRequ
 			Msg("failed to save short link to Redis")
 		return "", err
 	}
+
+	txn.Application().RecordCustomMetric(metricLinkShortened, 1)
 	return code, nil
 }

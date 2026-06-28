@@ -9,6 +9,7 @@ import (
 	"github.com/huypham67/bookmark-common/pkg/requestutils"
 	"github.com/huypham67/bookmark-common/pkg/response"
 	"github.com/huypham67/bookmark-service/internal/service/bookmark"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/rs/zerolog/log"
 )
 
@@ -38,6 +39,9 @@ const (
 // @Failure 500 {object} gin.H "Internal server error"
 // @Router /v1/bookmarks/import [post]
 func (h *handler) Import(c *gin.Context) {
+	segment := newrelic.FromContext(c).StartSegment("handler.bookmark.Import")
+	defer segment.End()
+
 	userID, err := jwt.GetUserIDFromContext(c)
 	if err != nil {
 		log.Warn().Msg("user ID not found in context")

@@ -7,11 +7,16 @@ import (
 	"github.com/huypham67/bookmark-common/pkg/dbutils"
 	bookmarkDTO "github.com/huypham67/bookmark-service/internal/dto/bookmark"
 	"github.com/huypham67/bookmark-service/internal/model"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/rs/zerolog/log"
 )
 
+const metricBookmarkCreated = "Custom/Bookmark/Created"
+
 // Create creates a new bookmark for the user.
 func (s *service) Create(ctx context.Context, userID string, req bookmarkDTO.CreateBookmarkRequest) (*model.Bookmark, error) {
+	txn := newrelic.FromContext(ctx)
+	defer txn.StartSegment("service.bookmark.Create").End()
 
 	bm := &model.Bookmark{
 		Description: req.Description,
@@ -41,6 +46,8 @@ func (s *service) Create(ctx context.Context, userID string, req bookmarkDTO.Cre
 			return nil, ErrInternalServerError
 		}
 	}
+
+	txn.Application().RecordCustomMetric(metricBookmarkCreated, 1)
 
 	log.Info().
 		Str("bookmark_id", bm.ID).
